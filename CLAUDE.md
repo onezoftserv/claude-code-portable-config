@@ -29,6 +29,10 @@ Applies when the root cause is unclear, the change crosses module/service bounda
 7. **External review tools, if available** — check with `command -v coderabbit` (bash) or `Get-Command coderabbit -ErrorAction SilentlyContinue` (PowerShell) — not `where`, which is a PowerShell alias for `Where-Object`, not the file-finder. Don't guess at flags; check `--help` once.
 8. **PR + monitor** — use `/ship` (see `commands/ship.md`). Running `/ship` is itself the go-ahead to push and open the PR; no separate confirmation needed on top of that.
 
+## New to a project
+
+First time working in a repo? `/check-repo-config` audits it against this file (read-only) and reports real contradictions vs. legitimate project-level overrides. Not automatic — run it when it's useful, not every session.
+
 ## PR and comment style
 
 - Plain, simple wording. As little text as possible.

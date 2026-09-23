@@ -10,6 +10,7 @@ Personal config, meant to travel to Mac, Linux containers, and a Windows work la
 - `hooks/common/` — the actual hook + statusLine scripts (Python, mostly OS-agnostic logic).
 - `hooks/windows/`, `hooks/mac/`, `hooks/linux/` — notes on OS quirks, and the place to add a hook that genuinely needs OS-specific behavior.
 - `commands/ship.md` — `/ship`: pushes, opens the PR, and watches it live for CodeRabbit/reviewer comments via `scripts/pr_watch.py`.
+- `commands/check-repo-config.md` — `/check-repo-config`: read-only audit of a project's own Claude Code config against this one; run manually when starting work somewhere new.
 - `agents/adversarial-reviewer.md` — the subagent used for plan/code adversarial review, defaulting to Sonnet; pass `model: "opus"` on the `Agent` call for complex/high-stakes work.
 - `scripts/install.py` — installs all of the above into `~/.claude` (or `$CLAUDE_CONFIG_DIR`), verifies the guard hook actually fires, and backs up whatever it overwrites.
 - `scripts/pr_watch.py` — polls a PR for new/updated reviewer comments; `/ship` runs this in the background.
