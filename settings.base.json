@@ -1,15 +1,11 @@
 {
-  "model": "sonnet",
-  "fallbackModel": ["haiku"],
+  "model": "opusplan",
+  "fallbackModel": ["sonnet"],
   "permissions": {
     "allow": [
-      "Read",
-      "Grep",
-      "Glob",
       "Bash(git status)",
       "Bash(git diff*)",
       "Bash(git log*)",
-      "Bash(git branch*)",
       "Bash(git show*)"
     ],
     "ask": [

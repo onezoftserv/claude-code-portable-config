@@ -1,17 +1,12 @@
 ---
-description: Open a PR for the current branch and watch it for automated review comments (CodeRabbit, etc.) for a few minutes.
+description: Push, open a PR, and watch it live for reviewer comments (CodeRabbit, etc.) for a bounded window.
 ---
 
-Push the current branch and open a pull request, then monitor it briefly. This is the last step of the workflow in CLAUDE.md — only run it after the local adversarial code review has passed.
+Last step of the CLAUDE.md workflow — only run after the local adversarial code review passed. Running `/ship` at all is the go-ahead to push and open the PR; don't ask again.
 
-1. Confirm the branch is ready: local adversarial code review done, tests passing. If not, stop and say so.
-2. Confirm with the user before pushing/opening the PR — this is a visible, hard-to-reverse action.
-3. Write the PR title and description per CLAUDE.md's PR style: plain wording, as little text as possible, bullets over prose, no restating the diff. Keep the attribution line.
-4. Create the PR with `gh pr create`.
-5. Start a bounded background poll (`run_in_background`, ~5-10 minutes total, checking every 30-60s) against all three comment surfaces:
-   - `gh api repos/{owner}/{repo}/pulls/{number}/comments` (inline review comments)
-   - `gh api repos/{owner}/{repo}/pulls/{number}/reviews` (review summaries, e.g. CodeRabbit's walkthrough)
-   - `gh api repos/{owner}/{repo}/issues/{number}/comments` (issue-style comments)
-   Track which comment/review IDs have already been seen so only new ones get reported.
-6. When new comments appear, summarize them in plain language — don't dump raw JSON. If nothing new shows up in the window, say so briefly and stop polling.
-7. Report the PR URL.
+1. `git push -u origin HEAD` (non-interactive; fails loudly if there's nothing to push).
+2. Write the PR title and body per CLAUDE.md's PR style — plain wording, as little text as possible, bullets over prose, no restating the diff, keep the attribution line.
+3. `gh pr create --title "<title>" --body "<body>"` — always pass both flags explicitly. Without them `gh` opens `$EDITOR` or prompts interactively, which hangs.
+4. Run `python "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/scripts/pr_watch.py" <pr-number>` (adjust the path/shell syntax for whichever shell you're actually in) as a background process, then use `Monitor` to watch it — it prints each new/updated comment as a single line the moment it finds one, so you get live updates, not just a summary at the end. Default window is ~8 minutes; pass `--minutes`/`--interval` to change it.
+5. When `pr_watch.py` reports something, relay it to the user in plain language, don't just paste its output. If the window ends with nothing new, say so briefly.
+6. Report the PR URL either way.
