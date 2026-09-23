@@ -13,7 +13,23 @@ Personal config, meant to travel to Mac, Linux containers, and a Windows work la
 - `scripts/install.py` — installs all of the above into `~/.claude` (or `$CLAUDE_CONFIG_DIR`), verifies the guard hook actually fires, and backs up whatever it overwrites.
 - `scripts/pr_watch.py` — polls a PR for new/updated reviewer comments; `/ship` runs this in the background.
 
-## Install on a new machine
+## Install (and upgrade) on a new machine
+
+One-liner, per OS — clones on first run, `git pull`s on every run after. **Re-running this same command is the upgrade command**, there's no separate one:
+
+macOS / Linux / containers:
+```
+curl -fsSL https://raw.githubusercontent.com/onezoftserv/claude-code-portable-config/main/install.sh | bash
+```
+
+Windows (PowerShell):
+```
+irm https://raw.githubusercontent.com/onezoftserv/claude-code-portable-config/main/install.ps1 | iex
+```
+
+Either script clones/pulls into `~/.claude-portable-config` (override with `$CLAUDE_PORTABLE_CONFIG_DIR`), then runs `scripts/install.py`. To pass it extra args (e.g. `--dry-run` to preview first) when piping: `curl -fsSL ... | bash -s -- --dry-run` (bash) or `... | iex` won't take args — download and run `install.ps1 -args` locally instead for that case.
+
+Already have it cloned and just want to work on it directly?
 
 ```
 python scripts/install.py --dry-run   # see what would change first
