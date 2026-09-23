@@ -62,3 +62,7 @@ After installing, open `/hooks` once in Claude Code (or restart it) so it picks 
 - **Portability**: the repo has no machine-specific paths in it. Only the installed, per-machine `settings.json` does, and that file isn't checked in.
 - **Token efficiency**: `CLAUDE.md` stays short and stable (it's replayed every turn — verbosity and churn both cost tokens). `"model": "opusplan"` gets Opus during planning for free, at the harness level, instead of relying on Claude to remember to switch models mid-task (it can't). Haiku is reserved for genuinely mechanical work.
 - **Safety**: the guard hook (`guard_destructive_commands.py`) is a pure-Python, zero-token backstop that asks before force-pushes, `git reset --hard`, recursive+forced deletes, and similar — on both Bash and PowerShell — even if a permission rule would otherwise auto-allow the command. It's a heuristic backstop, not a shell parser: quoted spans (commit messages, grep patterns) are stripped before matching, to cut false positives.
+
+## Contributing / Changelog
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add a hook, run the tests, and the commit/release conventions. See [CHANGELOG.md](CHANGELOG.md) for release history — `install.sh`/`install.ps1` can pin to any tagged version via `CLAUDE_PORTABLE_CONFIG_REF`.
