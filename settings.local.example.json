@@ -1,0 +1,9 @@
+{
+  "model": "sonnet",
+  "permissions": {
+    "allow": ["Bash(npm test)"],
+    "remove": {
+      "ask": ["Bash(rm -rf*)"]
+    }
+  }
+}

@@ -6,7 +6,7 @@ import install as inst  # noqa: E402
 
 
 def fresh_manifest():
-    return {"files": {}, "settings_keys": {}, "permission_rules": {}}
+    return {"files": {}, "permission_rules": {}}
 
 
 def test_fresh_write_records_hash(tmp_path):

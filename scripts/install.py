@@ -8,12 +8,22 @@ the real interpreter binary (not a Windows Store alias stub), which is
 exactly why this script uses it instead of `shutil.which("python")`.
 
 Upgrades are tracked with a manifest (.portable-config-manifest.json in the
-target dir): it records the hash of each file this installer wrote, which
-settings keys it set, and which permission rules it added. A file/key/rule
-still matching its recorded value hasn't been touched locally, so a new
-run safely updates it to the new repo version. One that no longer matches
-was edited by hand and is left alone. Without this, "rerun to upgrade"
-silently does nothing for anything you (or a previous run) already wrote.
+target dir): it records the hash of each prose file (CLAUDE.md, commands,
+agents) this installer wrote, and which permission rules it added. A file
+still matching its recorded hash hasn't been touched locally, so a new run
+safely updates it to the new repo version; one that no longer matches was
+edited by hand and is left alone. Without this, "rerun to upgrade" silently
+does nothing for anything you (or a previous run) already wrote.
+
+settings.json's managed scalar keys (model, fallbackModel) work differently:
+this installer fully owns them and always overwrites them to match
+settings.base.json (merged with settings.local.json, if you have one at the
+repo root — gitignored, not the same file as Claude Code's own per-project
+.claude/settings.local.json). To pin a different value on one machine,
+put it in settings.local.json, not by hand-editing the installed
+settings.json — a hand-edit there will be overwritten on the next run.
+Permission list rules still use the manifest's add/retract tracking, since
+those need to merge with rules you or Claude Code added directly.
 
 The PreToolUse hook uses exec-form args (no shell involved at all).
 statusLine has no exec-form in the schema, so its command is a shell
@@ -50,7 +60,8 @@ HOOK_MATCHER = "Bash|PowerShell"
 STATUSLINE_SCRIPT_NAME = "status_line.py"
 PERMISSION_LIST_KEYS = ("allow", "ask", "deny")
 MANIFEST_NAME = ".portable-config-manifest.json"
-_UNSET = object()
+LOCAL_SETTINGS_NAME = "settings.local.json"
+LOCAL_SCALAR_KEYS = ("model", "fallbackModel")
 
 
 def resolve_target(cli_target: Optional[str]) -> Path:
@@ -80,16 +91,31 @@ def file_hash(text: str) -> str:
 def load_manifest(target: Path) -> dict:
     path = target / MANIFEST_NAME
     if not path.exists():
-        return {"files": {}, "settings_keys": {}, "permission_rules": {}}
+        return {"files": {}, "permission_rules": {}}
     try:
         manifest = json.loads(path.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError:
         print(f"  WARNING: {path} is corrupt — treating as a fresh install for upgrade-tracking purposes.")
         manifest = {}
     manifest.setdefault("files", {})
-    manifest.setdefault("settings_keys", {})
     manifest.setdefault("permission_rules", {})
+    manifest.pop("settings_keys", None)  # obsolete; scalar keys are now fully owned, not tracked
     return manifest
+
+
+def load_local_overrides() -> dict:
+    """settings.local.json at the repo root -- gitignored, per-machine
+    overrides. NOT Claude Code's own .claude/settings.local.json (that one
+    is project-scoped only); this one is read by this script alone."""
+    path = REPO_ROOT / LOCAL_SETTINGS_NAME
+    if not path.exists():
+        return {}
+    raw = load_json_or_die(path)
+    allowed = {k: v for k, v in raw.items() if k in LOCAL_SCALAR_KEYS or k == "permissions"}
+    ignored = sorted(set(raw) - set(allowed))
+    if ignored:
+        print(f"  ignoring unrecognized {LOCAL_SETTINGS_NAME} key(s): {ignored}")
+    return allowed
 
 
 def save_manifest(target: Path, manifest: dict, dry_run: bool) -> None:
@@ -208,21 +234,32 @@ def merge_statusline(settings: dict, hooks_dir: Path) -> None:
     }
 
 
-def merge_permission_lists(merged: dict, base: dict, manifest: dict) -> None:
-    """Union in base's rules, but also retract a rule this installer added
-    in a previous run if base no longer wants it. A rule the user added by
-    hand (never in our manifest) is never touched either way."""
+def merge_permission_lists(merged: dict, base: dict, local: dict, manifest: dict) -> None:
+    """Union in base's + settings.local.json's rules, minus anything
+    settings.local.json explicitly retracts (permissions.remove), and also
+    retract a rule this installer itself added in a previous run if it's
+    no longer wanted. A rule the user (or Claude Code) added by hand,
+    never recorded in our manifest, is left alone unless local.json's
+    `remove` explicitly names it."""
     base_perms = base.get("permissions") or {}
+    local_perms = local.get("permissions") or {}
+    to_remove = local_perms.get("remove") or {}
     merged_perms = merged.setdefault("permissions", {})
     installer_added = manifest.setdefault("permission_rules", {})
 
     for key in PERMISSION_LIST_KEYS:
-        base_list = base_perms.get(key, [])
+        wanted = list(base_perms.get(key, []))
+        for rule in local_perms.get(key, []):
+            if rule not in wanted:
+                wanted.append(rule)
+        removed_here = set(to_remove.get(key, []))
+        wanted = [r for r in wanted if r not in removed_here]
+
         existing_list = merged_perms.get(key, [])
         previously_added = set(installer_added.get(key, []))
-
-        kept = [r for r in existing_list if not (r in previously_added and r not in base_list)]
-        for rule in base_list:
+        kept = [r for r in existing_list if not (r in previously_added and r not in wanted)]
+        kept = [r for r in kept if r not in removed_here]
+        for rule in wanted:
             if rule not in kept:
                 kept.append(rule)
 
@@ -230,35 +267,31 @@ def merge_permission_lists(merged: dict, base: dict, manifest: dict) -> None:
             merged_perms[key] = kept
         elif key in merged_perms:
             del merged_perms[key]
-        installer_added[key] = list(base_list)
+        installer_added[key] = wanted
 
     if not merged_perms:
         merged.pop("permissions", None)
 
 
-def merge_settings(base: dict, existing: dict, manifest: dict, hooks_dir: Path) -> tuple:
+def merge_settings(base: dict, existing: dict, manifest: dict, hooks_dir: Path, local: dict) -> tuple:
+    """settings.json's managed scalar keys are fully owned by this
+    installer: they always end up matching base (overridden by
+    settings.local.json if set), full stop -- no hand-edit detection, no
+    manifest tracking, no ambiguity about "did the user change this since
+    we set it". Want a different value on this machine? Put it in
+    settings.local.json and rerun; don't hand-edit the installed file."""
     merged = dict(existing)
-    settings_keys = manifest.setdefault("settings_keys", {})
 
-    for key, value in base.items():
+    for key in base:
         if key == "permissions":
             continue  # handled by merge_permission_lists below
-        if key not in merged:
-            merged[key] = value
-        else:
-            recorded = settings_keys.get(key, _UNSET)
-            if merged[key] != value:
-                if recorded is not _UNSET and merged[key] == recorded:
-                    print(f"  upgrading settings.json {key!r}: {merged[key]!r} -> {value!r}")
-                    merged[key] = value
-                else:
-                    print(f"  keeping existing settings.json value for {key!r} ({merged[key]!r}); repo default is {value!r} (locally changed)")
-        # Record what base WANTED, not what ended up installed — otherwise a
-        # kept local override gets recorded as "ours" and gets clobbered on
-        # the next run once it matches its own prior (locally-set) value.
-        settings_keys[key] = value
+        value = local[key] if key in local else base[key]
+        source = LOCAL_SETTINGS_NAME if key in local else "settings.base.json"
+        if merged.get(key) != value:
+            print(f"  settings.json {key!r} = {value!r} (from {source})")
+        merged[key] = value
 
-    merge_permission_lists(merged, base, manifest)
+    merge_permission_lists(merged, base, local, manifest)
     hook_entry = merge_hooks(merged, hooks_dir)
     merge_statusline(merged, hooks_dir)
     return merged, hook_entry
@@ -299,6 +332,8 @@ def main() -> None:
         print("  NOTE: this looks like a virtualenv interpreter — if you delete this venv later, the hook breaks silently until you rerun this installer.")
 
     manifest = load_manifest(target)
+    local_overrides = load_local_overrides()
+    print(f"Local overrides: {LOCAL_SETTINGS_NAME} " + ("found, applying" if local_overrides else f"none (create {LOCAL_SETTINGS_NAME} at the repo root to override per-machine)"))
 
     existing_settings_path = target / "settings.json"
     existing_settings = {}
@@ -342,7 +377,7 @@ def main() -> None:
 
     print("\nsettings.json:")
     base_settings = load_json_or_die(REPO_ROOT / "settings.base.json")
-    merged, hook_entry = merge_settings(base_settings, existing_settings, manifest, hooks_target_dir)
+    merged, hook_entry = merge_settings(base_settings, existing_settings, manifest, hooks_target_dir, local_overrides)
 
     if args.dry_run:
         print("  would write (dry run, showing result):")
