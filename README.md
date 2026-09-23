@@ -1,68 +1,82 @@
-# Portable Claude Code config
+# Claude Code portable config
 
-Personal config, meant to travel to Mac, Linux containers, and a Windows work laptop. This folder is the source of truth — edit files here, then run the installer on each machine. Nothing here is meant to be edited in place inside `~/.claude`.
+> Personal Claude Code setup — CLAUDE.md, settings, hooks, and commands — that travels to Mac, Linux containers, and Windows with one command.
 
-## Layout
+This repo is the source of truth for how Claude Code behaves for me: what model runs when, what it asks before doing, and the review workflow it follows. Install it on a new machine, or rerun the same command later to upgrade.
 
-- `CLAUDE.md` — working rules: model routing, token efficiency, the dev workflow, PR/comment style.
-- `settings.base.json` — model (`opusplan`), fallback model, and a starter permissions allowlist/asklist. The installer fully owns `model`/`fallbackModel` in the machine's real `settings.json` (always overwrites them) and unions in permission-list rules; keys it doesn't recognize are left alone.
-- `settings.local.json` (gitignored, not committed — copy `settings.local.example.json` to start one) — per-machine overrides, merged on top of `settings.base.json` before either gets installed. **Not** the same file as Claude Code's own project-scoped `.claude/settings.local.json`; this one lives at the repo root and only `scripts/install.py` reads it.
-- `hooks/common/` — the actual hook + statusLine scripts (Python, mostly OS-agnostic logic).
-- `hooks/windows/`, `hooks/mac/`, `hooks/linux/` — notes on OS quirks, and the place to add a hook that genuinely needs OS-specific behavior.
-- `commands/ship.md` — `/ship`: pushes, opens the PR, and watches it live for CodeRabbit/reviewer comments via `scripts/pr_watch.py`.
-- `commands/check-repo-config.md` — `/check-repo-config`: read-only audit of a project's own Claude Code config against this one; run manually when starting work somewhere new.
-- `agents/adversarial-reviewer.md` — the subagent used for plan/code adversarial review, defaulting to Sonnet; pass `model: "opus"` on the `Agent` call for complex/high-stakes work.
-- `scripts/install.py` — installs all of the above into `~/.claude` (or `$CLAUDE_CONFIG_DIR`), verifies the guard hook actually fires, and backs up whatever it overwrites.
-- `scripts/pr_watch.py` — polls a PR for new/updated reviewer comments; `/ship` runs this in the background.
+## Get started
 
-## Install (and upgrade) on a new machine
+Pick your OS. Both commands set up on first run and upgrade on every run after — there's no separate upgrade step.
 
-One-liner, per OS — sets up on first run, re-fetches on every run after. **Re-running this same command is the upgrade command**, there's no separate one, and `scripts/install.py`'s own manifest tracking means base-repo changes actually reach the machine (see below):
-
-macOS / Linux / containers:
-```
+**macOS, Linux, containers:**
+```bash
 curl -fsSL https://raw.githubusercontent.com/onezoftserv/claude-code-portable-config/main/install.sh | bash
 ```
 
-Windows (PowerShell):
-```
+**Windows (PowerShell):**
+```powershell
 irm https://raw.githubusercontent.com/onezoftserv/claude-code-portable-config/main/install.ps1 | iex
 ```
 
-Either script sets up (or re-fetches into) `~/.claude-portable-config` (override with `$CLAUDE_PORTABLE_CONFIG_DIR`), then runs `scripts/install.py`. To pass it extra args (e.g. `--dry-run` to preview first) when piping: `curl -fsSL ... | bash -s -- --dry-run` (bash) or `... | iex` won't take args — download and run `install.ps1 -args` locally instead for that case.
+Either script sets up (or re-fetches) `~/.claude-portable-config` (override with `$CLAUDE_PORTABLE_CONFIG_DIR`), then runs `scripts/install.py` there. Preview first with `curl -fsSL ... | bash -s -- --dry-run`.
 
-To pin to a specific version instead of tracking `main` (e.g. before an upgrade you're unsure about, or to roll back one), set `CLAUDE_PORTABLE_CONFIG_REF` to a branch, tag, or **full** commit SHA — this is the only rollback lever if a `git pull`-equivalent ever brings in something broken, since hooks/scripts always sync on every run.
+After installing, open `/hooks` once in Claude Code (or restart it) so it picks up the new hook.
 
-```
-curl -fsSL .../install.sh | CLAUDE_PORTABLE_CONFIG_REF=v1.0.0 bash    # put it on bash, not curl — a prefix before curl only scopes to curl
-$env:CLAUDE_PORTABLE_CONFIG_REF = "v1.0.0"; irm .../install.ps1 | iex
-```
+Already have it cloned?
 
-The `~/.claude-portable-config` checkout these scripts manage is disposable — they always `checkout --detach`, so don't edit files there. To change the config, edit (and push) this repo directly.
-
-Already have it cloned and just want to work on it directly?
-
-```
-python scripts/install.py --dry-run   # see what would change first
+```bash
+python scripts/install.py --dry-run   # preview
 python scripts/install.py
 ```
 
-The installer bakes the exact Python interpreter it's run with (`sys.executable`) into the hooks config as an absolute path, using exec-form `args` — no shell involved. That's what makes the guard hook work on Windows, macOS and Linux without branching: there's no `python` vs `python3` vs `py` guessing, no shell-quoting differences. `statusLine` has no exec-form in its schema, so that one command is a shell string; the installer checks whether `bash` is resolvable on this machine and adjusts the syntax so it matches whichever shell will actually run it (PowerShell needs the `&` call operator, bash doesn't).
+## What's in it
 
-It tracks what it last installed in `.portable-config-manifest.json` (in the target dir): a `CLAUDE.md`/command/agent file that still matches what the installer wrote last time gets upgraded automatically; one that's been hand-edited since is left alone (rerun with `--force` to overwrite it anyway — always backed up first, with a timestamp, so repeated `--force` runs don't destroy each other's backups). `hooks/` and `scripts/pr_watch.py` are always synced — they're managed code, not something to hand-edit on a target machine.
+**Model routing.** `settings.base.json` sets `"model": "opusplan"` — Opus while planning, Sonnet otherwise, enforced by the harness rather than left as a prose reminder. `CLAUDE.md` reserves Haiku for genuinely mechanical work and says when to pass `model: "opus"` on a subagent call explicitly.
 
-`settings.json` works differently: `model`/`fallbackModel` are fully owned by the installer and always end up matching `settings.base.json` (overridden by `settings.local.json` if you have one) — hand-editing the installed file directly does **not** stick, by design; use `settings.local.json` instead. Permission-list rules still use hand-edit-aware add/retract tracking, since those need to merge with rules you or Claude Code added directly. The old `settings.json` is backed up (timestamped) whenever it actually changes.
+**A review workflow for complex work.** `CLAUDE.md` lays out an 8-step process for anything with an unclear root cause or that crosses module boundaries: understand → plan → adversarial plan review → implement → tests → adversarial code review → optional CodeRabbit pass → `/ship`. Small, well-understood changes skip the ceremony on purpose.
 
-After every install it actually pipes a synthetic `rm -rf /` through the freshly baked hook command and prints whether the guard fired — a silent no-op hook (wrong interpreter path, unsupported `args` form, etc.) shows up immediately instead of being discovered later.
+**A destructive-command guard.** `hooks/common/guard_destructive_commands.py` is a zero-token, pure-Python `PreToolUse` hook (Bash + PowerShell) that asks before force-pushes, branch deletes, `git reset --hard`, and recursive+forced deletes — even if a permission rule would otherwise auto-allow the command. It's a heuristic backstop, not a shell parser: quoted spans (commit messages, grep patterns) are stripped before matching, and it's backed by 24+ test cases in `tests/`.
 
-After installing, open `/hooks` once in Claude Code (or restart it) so it picks up the new hook — the settings watcher only reloads on that trigger.
+```bash
+git push origin main --force          # asks
+git push --force-with-lease origin main   # doesn't -- the safe variant
+```
+
+**`/ship`.** Pushes, opens the PR non-interactively, then watches it live in the background via `scripts/pr_watch.py` for new or edited reviewer comments (CodeRabbit and friends), instead of a one-shot summary at the end. Checks the project's own instructions first and stops if they forbid auto-pushing.
+
+**`/check-repo-config`.** A read-only audit for when you start work in a different project: checks that repo's own `CLAUDE.md`/settings against a fixed checklist of this config's behaviors, and tells you which are a genuine contradiction versus a legitimate project-level override.
+
+**Per-machine overrides.** `settings.local.json` (gitignored — copy `settings.local.example.json` to start one) merges on top of `settings.base.json` before either gets installed. Not the same file as Claude Code's own project-scoped `.claude/settings.local.json` — this one lives at the repo root and only `scripts/install.py` reads it. Hand-editing the installed `settings.json` directly doesn't stick, by design; the installer fully owns its managed keys so a plain rerun is a real upgrade, not a silent no-op.
+
+**Version pinning.** `CLAUDE_PORTABLE_CONFIG_REF` pins install/upgrade to a branch, tag, or full commit SHA instead of `main` — the rollback lever if an upgrade ever brings in something broken, since hooks and scripts always sync on every run.
+
+```bash
+curl -fsSL .../install.sh | CLAUDE_PORTABLE_CONFIG_REF=v1.0.0 bash
+```
+
+## Where things live
+
+| What I want to do | Where |
+|---|---|
+| Change a rule Claude follows every session | `CLAUDE.md` |
+| Change the default model or permission rules | `settings.base.json` |
+| Override a setting on just this machine | `settings.local.json` (see `settings.local.example.json`) |
+| Add or tune a safety hook | `hooks/common/`, wired into `scripts/install.py` |
+| Change what `/ship` does | `commands/ship.md`, `scripts/pr_watch.py` |
+| Audit a different repo's config against this one | `/check-repo-config` |
+| Pin to or roll back to a specific version | `CLAUDE_PORTABLE_CONFIG_REF` |
+| See what changed between versions | `CHANGELOG.md` |
+| Add a hook, run the tests, understand the release process | `CONTRIBUTING.md` |
 
 ## Why this shape
 
-- **Portability**: the repo has no machine-specific paths in it. Only the installed, per-machine `settings.json` does, and that file isn't checked in.
-- **Token efficiency**: `CLAUDE.md` stays short and stable (it's replayed every turn — verbosity and churn both cost tokens). `"model": "opusplan"` gets Opus during planning for free, at the harness level, instead of relying on Claude to remember to switch models mid-task (it can't). Haiku is reserved for genuinely mechanical work.
-- **Safety**: the guard hook (`guard_destructive_commands.py`) is a pure-Python, zero-token backstop that asks before force-pushes, `git reset --hard`, recursive+forced deletes, and similar — on both Bash and PowerShell — even if a permission rule would otherwise auto-allow the command. It's a heuristic backstop, not a shell parser: quoted spans (commit messages, grep patterns) are stripped before matching, to cut false positives.
+- **Portability**: no machine-specific paths in the repo. Only the installed, per-machine `settings.json` has them, and it isn't checked in. The guard hook bakes `sys.executable` as an absolute path using exec-form `args` (no shell), which is what makes it work on Windows, macOS and Linux without branching.
+- **Token efficiency**: `CLAUDE.md` stays short and stable — it's replayed every turn, and both verbosity and churn cost tokens. `opusplan` gets Opus during planning for free, at the harness level, instead of relying on Claude to remember to switch models mid-task (it can't).
+- **Upgrades that actually upgrade**: `scripts/install.py` tracks a manifest of what it last wrote. A file or setting still matching that gets upgraded automatically on rerun; one you've hand-edited since is left alone. It also self-verifies the guard hook actually fires after every install, so a silent no-op (wrong interpreter path, unsupported `args` form) shows up immediately instead of being discovered later.
 
-## Contributing / Changelog
+## Next steps
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add a hook, run the tests, and the commit/release conventions. See [CHANGELOG.md](CHANGELOG.md) for release history — `install.sh`/`install.ps1` can pin to any tagged version via `CLAUDE_PORTABLE_CONFIG_REF`.
+- [CHANGELOG.md](CHANGELOG.md) — release history, and the design decisions made on purpose (no symlinks, no eval harness — see 1.0.0)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — adding a hook, running the tests, commit/release conventions
+- [LICENSE](LICENSE) — MIT
+- [Releases](https://github.com/onezoftserv/claude-code-portable-config/releases) — tagged versions, for `CLAUDE_PORTABLE_CONFIG_REF`
