@@ -31,6 +31,8 @@ Either script sets up (or re-fetches into) `~/.claude-portable-config` (override
 
 To pin to a specific version instead of tracking `main` (e.g. before an upgrade you're unsure about, or to roll back one), set `CLAUDE_PORTABLE_CONFIG_REF` to a branch, tag, or **full** commit SHA before running either command — this is the only rollback lever if a `git pull`-equivalent ever brings in something broken, since hooks/scripts always sync on every run.
 
+The `~/.claude-portable-config` checkout these scripts manage is disposable — they always `checkout --detach`, so don't edit files there. To change the config, edit (and push) this repo directly.
+
 Already have it cloned and just want to work on it directly?
 
 ```

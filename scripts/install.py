@@ -109,7 +109,8 @@ def sync_managed_file(src: Path, dst: Path, rel_key: str, manifest: dict, force:
     it hasn't been hand-edited since. That makes a plain rerun a real
     upgrade for files that haven't been touched, while still protecting
     local edits without needing --force."""
-    dst.parent.mkdir(parents=True, exist_ok=True)
+    if not dry_run:
+        dst.parent.mkdir(parents=True, exist_ok=True)
     new_content = src.read_text(encoding="utf-8")
     new_hash = file_hash(new_content)
     recorded_hash = manifest["files"].get(rel_key)
@@ -348,11 +349,14 @@ def main() -> None:
 
     text = json.dumps(merged, indent=2) + "\n"
     json.loads(text)  # re-parse before touching disk
-    existing_settings_path.parent.mkdir(parents=True, exist_ok=True)
-    if existing_settings_path.exists():
-        shutil.copy2(existing_settings_path, timestamped_backup(existing_settings_path))
-    existing_settings_path.write_text(text, encoding="utf-8")
-    print(f"  wrote      {existing_settings_path}")
+    if existing_settings_path.exists() and existing_settings_path.read_text(encoding="utf-8-sig") == text:
+        print(f"  unchanged  {existing_settings_path}")
+    else:
+        existing_settings_path.parent.mkdir(parents=True, exist_ok=True)
+        if existing_settings_path.exists():
+            shutil.copy2(existing_settings_path, timestamped_backup(existing_settings_path))
+        existing_settings_path.write_text(text, encoding="utf-8")
+        print(f"  wrote      {existing_settings_path}")
 
     save_manifest(target, manifest, args.dry_run)
 

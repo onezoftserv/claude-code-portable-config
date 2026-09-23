@@ -1,6 +1,6 @@
 # Personal working rules
 
-Portable across machines. Edit this file in the source repo, not in `~/.claude` — `scripts/install.py` syncs `~/.claude/CLAUDE.md` from here (skips if your copy differs, unless you pass `--force`).
+Portable across machines. Edit this file in the source repo, not in `~/.claude` — `scripts/install.py` syncs `~/.claude/CLAUDE.md` from here on every rerun, unless you've hand-edited the installed copy (then it's left alone until `--force`).
 
 ## Model routing
 
