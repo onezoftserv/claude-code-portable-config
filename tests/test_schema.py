@@ -8,6 +8,12 @@ import pytest
 jsonschema = pytest.importorskip("jsonschema")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+# Vendored (not fetched at test time -- a network call is the flakiest thing
+# a test suite can do) from https://www.schemastore.org/claude-code-settings.json
+# on 2026-09-23, at commit c27e15c. Schema is `additionalProperties: true`, so
+# it only catches type errors, not typo'd/unrecognized keys -- and it can lag
+# behind newly added settings.json keys. Refresh manually with:
+#   curl -fsSL https://www.schemastore.org/claude-code-settings.json -o tests/claude-code-settings.schema.json
 SCHEMA_PATH = Path(__file__).resolve().parent / "claude-code-settings.schema.json"
 
 

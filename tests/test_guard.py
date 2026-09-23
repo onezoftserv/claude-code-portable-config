@@ -18,6 +18,10 @@ CASES = [
     ("git push origin main --force", True),
     ("git push -f origin main", True),
     ("git push --force-with-lease origin main", False),
+    ("git push --force-with-lease --force origin main", True),
+    ("git push origin +main", True),
+    ("git push --delete origin main", True),
+    ("git push origin :main", True),
     ("git reset --hard HEAD~1", True),
     ("git clean -fd", True),
     ("git clean --force", True),
@@ -39,5 +43,6 @@ def test_is_dangerous(command, expected):
     assert bool(is_dangerous(command)) == expected, f"is_dangerous({command!r}) reason={is_dangerous(command)!r}"
 
 
-def test_none_command_does_not_crash():
+def test_empty_and_none_command_do_not_crash():
     assert is_dangerous("") == ""
+    assert is_dangerous(None) == ""

@@ -253,7 +253,10 @@ def merge_settings(base: dict, existing: dict, manifest: dict, hooks_dir: Path) 
                     merged[key] = value
                 else:
                     print(f"  keeping existing settings.json value for {key!r} ({merged[key]!r}); repo default is {value!r} (locally changed)")
-        settings_keys[key] = merged[key]
+        # Record what base WANTED, not what ended up installed — otherwise a
+        # kept local override gets recorded as "ours" and gets clobbered on
+        # the next run once it matches its own prior (locally-set) value.
+        settings_keys[key] = value
 
     merge_permission_lists(merged, base, manifest)
     hook_entry = merge_hooks(merged, hooks_dir)

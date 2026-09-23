@@ -5,8 +5,11 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/onezoftserv/claude-code-portable-config/main/install.sh | bash
 #
-# Pin to a branch, tag, or FULL (not abbreviated) commit SHA instead of main:
-#   CLAUDE_PORTABLE_CONFIG_REF=v1.0.0 curl -fsSL .../install.sh | bash
+# Pin to a branch, tag, or FULL (not abbreviated) commit SHA instead of
+# main. The env var must be a prefix on `bash`, the right side of the
+# pipe — putting it before `curl` scopes it to curl instead and silently
+# installs main:
+#   curl -fsSL .../install.sh | CLAUDE_PORTABLE_CONFIG_REF=v1.0.0 bash
 set -euo pipefail
 
 REPO_URL="https://github.com/onezoftserv/claude-code-portable-config.git"

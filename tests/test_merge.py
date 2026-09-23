@@ -44,6 +44,21 @@ def test_local_override_survives_base_change():
     assert merged2["model"] == "haiku"
 
 
+def test_local_override_survives_a_third_run_too():
+    # Regression test: an earlier version recorded the KEPT value (the
+    # override itself) in the manifest instead of what base wanted, so by
+    # the 3rd run the override looked "unchanged since we set it" and got
+    # silently upgraded away. Must record base's own value every time.
+    base = {"model": "opusplan"}
+    manifest = fresh_manifest()
+    merged, _ = inst.merge_settings(base, {}, manifest, Path("/hooks"))
+    merged["model"] = "haiku"  # hand-edit
+    merged, _ = inst.merge_settings(base, merged, manifest, Path("/hooks"))  # run 2, base unchanged
+    assert merged["model"] == "haiku"
+    merged, _ = inst.merge_settings(base, merged, manifest, Path("/hooks"))  # run 3
+    assert merged["model"] == "haiku", "local override was clobbered on the 3rd run"
+
+
 def test_removed_base_rule_is_retracted():
     base = {"permissions": {"allow": ["Bash(git status)", "Bash(git show*)"]}}
     manifest = fresh_manifest()

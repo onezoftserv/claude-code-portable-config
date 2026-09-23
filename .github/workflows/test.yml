@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     strategy:
@@ -18,3 +21,31 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install pytest jsonschema
       - run: pytest -v
+
+  bootstrap:
+    # Exercises install.sh/install.ps1 themselves (git init+fetch+checkout,
+    # pinning to this exact commit), not just scripts/install.py directly.
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run install.sh (bash)
+        if: runner.os != 'Windows'
+        run: |
+          export CLAUDE_PORTABLE_CONFIG_DIR="$RUNNER_TEMP/clone"
+          export CLAUDE_PORTABLE_CONFIG_REF="${{ github.sha }}"
+          bash install.sh --target "$RUNNER_TEMP/installed"
+          test -f "$RUNNER_TEMP/installed/settings.json"
+      - name: Run install.ps1 (PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:CLAUDE_PORTABLE_CONFIG_DIR = "$env:RUNNER_TEMP\clone"
+          $env:CLAUDE_PORTABLE_CONFIG_REF = "${{ github.sha }}"
+          ./install.ps1 --target "$env:RUNNER_TEMP\installed"
+          if (-not (Test-Path "$env:RUNNER_TEMP\installed\settings.json")) { throw "settings.json missing" }

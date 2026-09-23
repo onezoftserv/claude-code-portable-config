@@ -29,7 +29,12 @@ irm https://raw.githubusercontent.com/onezoftserv/claude-code-portable-config/ma
 
 Either script sets up (or re-fetches into) `~/.claude-portable-config` (override with `$CLAUDE_PORTABLE_CONFIG_DIR`), then runs `scripts/install.py`. To pass it extra args (e.g. `--dry-run` to preview first) when piping: `curl -fsSL ... | bash -s -- --dry-run` (bash) or `... | iex` won't take args — download and run `install.ps1 -args` locally instead for that case.
 
-To pin to a specific version instead of tracking `main` (e.g. before an upgrade you're unsure about, or to roll back one), set `CLAUDE_PORTABLE_CONFIG_REF` to a branch, tag, or **full** commit SHA before running either command — this is the only rollback lever if a `git pull`-equivalent ever brings in something broken, since hooks/scripts always sync on every run.
+To pin to a specific version instead of tracking `main` (e.g. before an upgrade you're unsure about, or to roll back one), set `CLAUDE_PORTABLE_CONFIG_REF` to a branch, tag, or **full** commit SHA — this is the only rollback lever if a `git pull`-equivalent ever brings in something broken, since hooks/scripts always sync on every run.
+
+```
+curl -fsSL .../install.sh | CLAUDE_PORTABLE_CONFIG_REF=v1.0.0 bash    # put it on bash, not curl — a prefix before curl only scopes to curl
+$env:CLAUDE_PORTABLE_CONFIG_REF = "v1.0.0"; irm .../install.ps1 | iex
+```
 
 The `~/.claude-portable-config` checkout these scripts manage is disposable — they always `checkout --detach`, so don't edit files there. To change the config, edit (and push) this repo directly.
 
