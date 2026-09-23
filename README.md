@@ -1,5 +1,11 @@
 # Claude Code portable config
 
+[![test](https://github.com/onezoftserv/claude-code-portable-config/actions/workflows/test.yml/badge.svg)](https://github.com/onezoftserv/claude-code-portable-config/actions/workflows/test.yml)
+[![codeql](https://github.com/onezoftserv/claude-code-portable-config/actions/workflows/codeql.yml/badge.svg)](https://github.com/onezoftserv/claude-code-portable-config/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/onezoftserv/claude-code-portable-config/graph/badge.svg)](https://codecov.io/gh/onezoftserv/claude-code-portable-config)
+[![release](https://img.shields.io/github/v/release/onezoftserv/claude-code-portable-config)](https://github.com/onezoftserv/claude-code-portable-config/releases)
+[![license](https://img.shields.io/github/license/onezoftserv/claude-code-portable-config)](LICENSE)
+
 > Personal Claude Code setup — CLAUDE.md, settings, hooks, and commands — that travels to Mac, Linux containers, and Windows with one command.
 
 This repo is the source of truth for how Claude Code behaves for me: what model runs when, what it asks before doing, and the review workflow it follows. Install it on a new machine, or rerun the same command later to upgrade.
