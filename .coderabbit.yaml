@@ -1,0 +1,12 @@
+# CodeRabbit config. Only applies once the CodeRabbit GitHub App is
+# installed on this repo (https://github.com/apps/coderabbitai) -- free for
+# public repos. Verify keys against https://docs.coderabbit.ai/reference/configuration
+# if CodeRabbit's UI ever disagrees with this file.
+language: en-US
+reviews:
+  profile: chill
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
