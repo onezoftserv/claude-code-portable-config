@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Install this portable Claude Code config into ~/.claude (or $CLAUDE_CONFIG_DIR).
+"""Install/upgrade this portable Claude Code config into ~/.claude (or $CLAUDE_CONFIG_DIR).
 
 Run this with whichever Python you use day to day on this machine — the
 interpreter running this script (sys.executable) is the one baked into the
 hook and statusLine commands in settings.json. sys.executable resolves to
 the real interpreter binary (not a Windows Store alias stub), which is
 exactly why this script uses it instead of `shutil.which("python")`.
+
+Upgrades are tracked with a manifest (.portable-config-manifest.json in the
+target dir): it records the hash of each file this installer wrote, which
+settings keys it set, and which permission rules it added. A file/key/rule
+still matching its recorded value hasn't been touched locally, so a new
+run safely updates it to the new repo version. One that no longer matches
+was edited by hand and is left alone. Without this, "rerun to upgrade"
+silently does nothing for anything you (or a previous run) already wrote.
 
 The PreToolUse hook uses exec-form args (no shell involved at all).
 statusLine has no exec-form in the schema, so its command is a shell
@@ -21,15 +29,18 @@ Usage:
                Use this to test against a scratch directory first.
 --dry-run      Print what would change; write nothing.
 --force        Overwrite CLAUDE.md / commands / agents even if the target
-               copy differs from this repo (existing copies are backed up
-               to *.bak either way when they're about to be overwritten).
+               copy was hand-edited since the last install (still backed
+               up first, with a timestamp so repeated --force runs don't
+               destroy each other's backups).
 """
 import argparse
+import hashlib
 import json
 import os
 import shutil
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -38,6 +49,8 @@ HOOK_SCRIPT_NAME = "guard_destructive_commands.py"
 HOOK_MATCHER = "Bash|PowerShell"
 STATUSLINE_SCRIPT_NAME = "status_line.py"
 PERMISSION_LIST_KEYS = ("allow", "ask", "deny")
+MANIFEST_NAME = ".portable-config-manifest.json"
+_UNSET = object()
 
 
 def resolve_target(cli_target: Optional[str]) -> Path:
@@ -60,25 +73,68 @@ def load_json_or_die(path: Path) -> dict:
         sys.exit(1)
 
 
-def copy_with_backup(src: Path, dst: Path, force: bool, dry_run: bool) -> None:
+def file_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def load_manifest(target: Path) -> dict:
+    path = target / MANIFEST_NAME
+    if not path.exists():
+        return {"files": {}, "settings_keys": {}, "permission_rules": {}}
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError:
+        print(f"  WARNING: {path} is corrupt — treating as a fresh install for upgrade-tracking purposes.")
+        manifest = {}
+    manifest.setdefault("files", {})
+    manifest.setdefault("settings_keys", {})
+    manifest.setdefault("permission_rules", {})
+    return manifest
+
+
+def save_manifest(target: Path, manifest: dict, dry_run: bool) -> None:
+    if dry_run:
+        return
+    (target / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
+def timestamped_backup(dst: Path) -> Path:
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return dst.with_name(f"{dst.name}.{ts}.bak")
+
+
+def sync_managed_file(src: Path, dst: Path, rel_key: str, manifest: dict, force: bool, dry_run: bool) -> None:
+    """Copy src -> dst, but only overwrite an existing dst if it still
+    matches what THIS installer last wrote there (per the manifest) — i.e.
+    it hasn't been hand-edited since. That makes a plain rerun a real
+    upgrade for files that haven't been touched, while still protecting
+    local edits without needing --force."""
     dst.parent.mkdir(parents=True, exist_ok=True)
     new_content = src.read_text(encoding="utf-8")
+    new_hash = file_hash(new_content)
+    recorded_hash = manifest["files"].get(rel_key)
+
     if dst.exists():
         old_content = dst.read_text(encoding="utf-8-sig")
-        if old_content == new_content:
+        old_hash = file_hash(old_content)
+        if old_hash == new_hash:
             print(f"  unchanged  {dst}")
+            manifest["files"][rel_key] = new_hash
             return
-        if not force:
-            print(f"  SKIPPED    {dst} (differs from repo copy; rerun with --force to overwrite)")
+        hand_edited = recorded_hash is None or old_hash != recorded_hash
+        if hand_edited and not force:
+            reason = "hand-edited since last install" if recorded_hash else "already exists, not one this installer wrote before"
+            print(f"  SKIPPED    {dst} ({reason}; rerun with --force to overwrite)")
             return
         if dry_run:
-            print(f"  would back up {dst} -> {dst}.bak, then overwrite")
+            print(f"  would back up {dst} -> {timestamped_backup(dst).name}, then upgrade")
         else:
-            shutil.copy2(dst, dst.with_suffix(dst.suffix + ".bak"))
+            shutil.copy2(dst, timestamped_backup(dst))
     if dry_run:
         print(f"  would write {dst}")
         return
     dst.write_text(new_content, encoding="utf-8")
+    manifest["files"][rel_key] = new_hash
     print(f"  wrote      {dst}")
 
 
@@ -151,31 +207,54 @@ def merge_statusline(settings: dict, hooks_dir: Path) -> None:
     }
 
 
-def merge_permission_lists(merged: dict, base: dict) -> None:
-    base_perms = base.get("permissions")
-    if not base_perms:
-        return
+def merge_permission_lists(merged: dict, base: dict, manifest: dict) -> None:
+    """Union in base's rules, but also retract a rule this installer added
+    in a previous run if base no longer wants it. A rule the user added by
+    hand (never in our manifest) is never touched either way."""
+    base_perms = base.get("permissions") or {}
     merged_perms = merged.setdefault("permissions", {})
+    installer_added = manifest.setdefault("permission_rules", {})
+
     for key in PERMISSION_LIST_KEYS:
-        base_list = base_perms.get(key)
-        if not base_list:
-            continue
-        existing_list = merged_perms.setdefault(key, [])
+        base_list = base_perms.get(key, [])
+        existing_list = merged_perms.get(key, [])
+        previously_added = set(installer_added.get(key, []))
+
+        kept = [r for r in existing_list if not (r in previously_added and r not in base_list)]
         for rule in base_list:
-            if rule not in existing_list:
-                existing_list.append(rule)
+            if rule not in kept:
+                kept.append(rule)
+
+        if kept:
+            merged_perms[key] = kept
+        elif key in merged_perms:
+            del merged_perms[key]
+        installer_added[key] = list(base_list)
+
+    if not merged_perms:
+        merged.pop("permissions", None)
 
 
-def merge_settings(base: dict, existing: dict, hooks_dir: Path) -> dict:
+def merge_settings(base: dict, existing: dict, manifest: dict, hooks_dir: Path) -> tuple:
     merged = dict(existing)
+    settings_keys = manifest.setdefault("settings_keys", {})
+
     for key, value in base.items():
         if key == "permissions":
             continue  # handled by merge_permission_lists below
         if key not in merged:
             merged[key] = value
-        elif merged[key] != value:
-            print(f"  keeping existing settings.json value for {key!r} ({merged[key]!r}); repo default is {value!r}")
-    merge_permission_lists(merged, base)
+        else:
+            recorded = settings_keys.get(key, _UNSET)
+            if merged[key] != value:
+                if recorded is not _UNSET and merged[key] == recorded:
+                    print(f"  upgrading settings.json {key!r}: {merged[key]!r} -> {value!r}")
+                    merged[key] = value
+                else:
+                    print(f"  keeping existing settings.json value for {key!r} ({merged[key]!r}); repo default is {value!r} (locally changed)")
+        settings_keys[key] = merged[key]
+
+    merge_permission_lists(merged, base, manifest)
     hook_entry = merge_hooks(merged, hooks_dir)
     merge_statusline(merged, hooks_dir)
     return merged, hook_entry
@@ -215,21 +294,25 @@ def main() -> None:
     if any(marker in sys.executable.lower() for marker in ("venv", "virtualenvs")):
         print("  NOTE: this looks like a virtualenv interpreter — if you delete this venv later, the hook breaks silently until you rerun this installer.")
 
+    manifest = load_manifest(target)
+
     existing_settings_path = target / "settings.json"
     existing_settings = {}
     if existing_settings_path.exists():
         existing_settings = load_json_or_die(existing_settings_path)
 
     print("\nCLAUDE.md:")
-    copy_with_backup(REPO_ROOT / "CLAUDE.md", target / "CLAUDE.md", args.force, args.dry_run)
+    sync_managed_file(REPO_ROOT / "CLAUDE.md", target / "CLAUDE.md", "CLAUDE.md", manifest, args.force, args.dry_run)
 
     print("\nCommands:")
     for src in sorted((REPO_ROOT / "commands").glob("*.md")):
-        copy_with_backup(src, target / "commands" / src.name, args.force, args.dry_run)
+        rel_key = f"commands/{src.name}"
+        sync_managed_file(src, target / "commands" / src.name, rel_key, manifest, args.force, args.dry_run)
 
     print("\nAgents:")
     for src in sorted((REPO_ROOT / "agents").glob("*.md")):
-        copy_with_backup(src, target / "agents" / src.name, args.force, args.dry_run)
+        rel_key = f"agents/{src.name}"
+        sync_managed_file(src, target / "agents" / src.name, rel_key, manifest, args.force, args.dry_run)
 
     print("\nHooks (always synced from repo):")
     hooks_target_dir = target / "hooks"
@@ -255,7 +338,7 @@ def main() -> None:
 
     print("\nsettings.json:")
     base_settings = load_json_or_die(REPO_ROOT / "settings.base.json")
-    merged, hook_entry = merge_settings(base_settings, existing_settings, hooks_target_dir)
+    merged, hook_entry = merge_settings(base_settings, existing_settings, manifest, hooks_target_dir)
 
     if args.dry_run:
         print("  would write (dry run, showing result):")
@@ -267,9 +350,11 @@ def main() -> None:
     json.loads(text)  # re-parse before touching disk
     existing_settings_path.parent.mkdir(parents=True, exist_ok=True)
     if existing_settings_path.exists():
-        shutil.copy2(existing_settings_path, existing_settings_path.with_suffix(".json.bak"))
+        shutil.copy2(existing_settings_path, timestamped_backup(existing_settings_path))
     existing_settings_path.write_text(text, encoding="utf-8")
     print(f"  wrote      {existing_settings_path}")
+
+    save_manifest(target, manifest, args.dry_run)
 
     print("\nVerifying the guard hook actually fires:")
     verify_guard_hook(hook_entry)
