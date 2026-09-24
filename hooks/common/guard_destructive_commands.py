@@ -60,17 +60,37 @@ DELETE_COMMANDS = re.compile(r"\b(rm|del|rd|rmdir|remove-item|ri)\b", re.IGNOREC
 RECURSIVE_FLAG = re.compile(r"(--recursive\b|-[a-z]*r[a-z]*\b|/s\b)", re.IGNORECASE)
 FORCE_FLAG = re.compile(r"(--force\b|-[a-z]*f[a-z]*\b|/q\b)", re.IGNORECASE)
 
+# `bash -c "..."` / `sh -c '...'` / `pwsh -Command "..."` / `cmd /c "..."` run
+# the quoted string AS the command -- there, the quotes aren't incidental
+# text (a commit message, a grep pattern) to strip away, they're the
+# payload we need to look inside. Stripping quotes unconditionally let
+# `bash -c "rm -rf build"` sail through with an empty stripped string.
+_SHELL_DASH_C_RE = re.compile(r"\b(?:bash|sh|zsh|pwsh|powershell)\b.*\s(?:-c|-Command)\s", re.IGNORECASE)
+_CMD_SLASH_C_RE = re.compile(r"\bcmd(?:\.exe)?\b.*\s/c\s", re.IGNORECASE)
+
+
+def _scan(text: str) -> str:
+    if is_force_or_delete_push(text):
+        return "git push with a force or delete flag/refspec"
+    for pattern in LINE_PATTERNS:
+        if pattern.search(text):
+            return f"matched pattern: {pattern.pattern}"
+    if DELETE_COMMANDS.search(text) and RECURSIVE_FLAG.search(text) and FORCE_FLAG.search(text):
+        return "recursive + forced delete"
+    return ""
+
 
 def is_dangerous(command) -> str:
     """Return a human-readable reason if command looks dangerous, else ""."""
-    stripped = _QUOTED.sub(" ", command or "")
-    if is_force_or_delete_push(stripped):
-        return "git push with a force or delete flag/refspec"
-    for pattern in LINE_PATTERNS:
-        if pattern.search(stripped):
-            return f"matched pattern: {pattern.pattern}"
-    if DELETE_COMMANDS.search(stripped) and RECURSIVE_FLAG.search(stripped) and FORCE_FLAG.search(stripped):
-        return "recursive + forced delete"
+    command = command or ""
+    stripped = _QUOTED.sub(" ", command)
+    reason = _scan(stripped)
+    if reason:
+        return reason
+    if _SHELL_DASH_C_RE.search(command) or _CMD_SLASH_C_RE.search(command):
+        reason = _scan(command)  # here the quoted text IS the command; don't strip it
+        if reason:
+            return f"{reason} (inside a shell -c/-Command payload)"
     return ""
 
 

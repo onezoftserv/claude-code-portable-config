@@ -10,8 +10,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 - Status badges (test/CodeQL/Codecov/release/license) on the README.
 - `tests/test_status_line.py` — `hooks/common/status_line.py` was 0% covered; `format_status_line()` extracted as a pure function (same pattern as the guard hook's `is_dangerous()`) so it's testable without stdin/subprocess.
 - Validation in `install.py` for `settings.local.json`'s shape (a bare string where a permission list is required, a list where `permissions.remove` must be an object, `fallbackModel` as a non-array) — these used to crash mid-install or silently corrupt `settings.json` instead of failing loudly before anything is written.
-- `advisorModel: "opus"` and `subagentPromptCacheTtl: "1h"` in `settings.base.json` — the `advisor` tool has no per-call model choice, so this is the only way to make it consistently strong; the cache TTL bump matches how much this repo's own workflow leans on spawning subagents.
-- `commands/handoff.md` and `commands/resume.md` — write/read `.claude/handoff.md` for picking up in-progress work on another machine. Auto-memory explicitly excludes in-progress task state, so this isn't redundant with it.
+- `advisorModel: "opus"` in `settings.base.json` — the `advisor` tool has no per-call model choice, so this is the only way to make it consistently strong.
+- `commands/handoff.md` and `commands/pickup.md` — write/read `.claude/handoff.md` for picking up in-progress work on another machine. Auto-memory explicitly excludes in-progress task state, so this isn't redundant with it.
+- `tests/test_pr_watch.py` for the concatenated-JSON-array decoder — the one piece of `pr_watch.py` that's a pure function and was untested.
 - `adversarial-reviewer` now explicitly checks subprocess/credential-handling code for injection and leak risk, not just general correctness, after researching whether a separate security-focused agent was warranted (it wasn't, for a repo this size — one added line covers the gap cheaper).
 - CLAUDE.md notes that a subagent spawned without an explicit `model` inherits the parent's *current* resolved model — during plan mode that's Opus, so an unscoped ad-hoc subagent spawned mid-plan can be pricier than expected.
 - `/ship` now reminds to add a `CHANGELOG.md` entry before pushing, if the project keeps one — this changelog itself went stale between several PRs before being backfilled manually.
@@ -25,6 +26,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ### Fixed
 - Coverage measurement: `--cov` was unscoped, so an old locally-cached `coverage` version credited e2e subprocess tests as covering code they didn't actually instrument, showing 75-92% locally against Codecov's correct 52%. Fixed by scoping `--cov=hooks/common --cov=scripts` and pinning `pytest-cov`/`coverage` versions in CI so the number can't silently drift again on some future release.
+- **`/resume` silently shadowed Claude Code's own built-in session-picker command of the same name.** Renamed to `/pickup`; `install.py` now removes the old `commands/resume.md` on upgrade (only if it's untouched since we wrote it, same rule as everything else).
+- **The guard hook was bypassed entirely by `bash -c "..."` / `sh -c '...'` / `pwsh -Command "..."` / `cmd /c "..."`** — quoted spans are stripped before matching (so a commit message doesn't false-positive), which also stripped away the actual payload when the whole point of the quotes was to hand a command to a shell. Now also scans the raw, unstripped command when it detects one of those wrapper forms.
+- **`/ship` pushed before the CHANGELOG entry was ever committed**, and didn't check whether it was being run on the repo's default branch (there's nothing to open a PR from) or against a dirty working tree. Reordered: check branch, check clean tree, commit the changelog entry, *then* push.
+- **`settings.local.json` could only override `model`/`fallbackModel`** — the allowed set was a hardcoded tuple, so `advisorModel` (added earlier this changelog) had no per-machine override at all, silently logged as "unrecognized". Now derived from `settings.base.json`'s own keys, so any key it manages is automatically overridable; the fallbackModel-specific type check generalized to any key (must match base's type).
+- Reverted `subagentPromptCacheTtl: "1h"`: per the actual caching docs, 1h only pays off when a session idles past 5 minutes and resumes — it *costs more* on the burst pattern this repo's subagent-heavy workflow actually has. The original justification had it backwards.
+- `pr_watch.py`: strips HTML comments (CodeRabbit wraps its summaries in them) before truncating/printing, and skips empty bodies (an approve-only review) instead of printing a blank line.
+- Removed the placeholder `hooks/windows/`, `hooks/mac/`, `hooks/linux/` directories — three near-duplicate READMEs with no code, since `install.py` never read from them. Consolidated into one paragraph in CONTRIBUTING.md.
+- Trimmed two lines from CLAUDE.md that were notes about the repo/harness rather than instructions Claude acts on (replayed every turn either way); moved the hooks-schema note to CONTRIBUTING's "Adding a hook" section.
+- `settings.local.example.json`'s example removed a permission `ask` rule the guard hook independently still enforces, so applying it produced no visible change. Changed to removing an `allow` rule instead, which does.
 
 ## [1.0.0] - 2026-09-23
 

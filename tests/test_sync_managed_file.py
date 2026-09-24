@@ -90,3 +90,38 @@ def test_dry_run_never_writes_or_creates_directories(tmp_path):
     assert not dst.exists()
     assert not dst.parent.exists()
     assert "CLAUDE.md" not in manifest["files"]
+
+
+def test_remove_renamed_file_removes_untouched_old_file(tmp_path):
+    # Simulates commands/resume.md -> pickup.md: the old file must go away
+    # on upgrade, not linger and keep shadowing Claude Code's built-in
+    # /resume command forever.
+    manifest = fresh_manifest()
+    old = tmp_path / "commands" / "resume.md"
+    old.parent.mkdir(parents=True)
+    old.write_text("old content\n", encoding="utf-8")
+    manifest["files"]["commands/resume.md"] = inst.file_hash("old content\n")
+
+    inst.remove_renamed_file(tmp_path, "commands/resume.md", manifest, dry_run=False)
+
+    assert not old.exists()
+    assert "commands/resume.md" not in manifest["files"]
+
+
+def test_remove_renamed_file_keeps_a_hand_edited_old_file(tmp_path):
+    manifest = fresh_manifest()
+    old = tmp_path / "commands" / "resume.md"
+    old.parent.mkdir(parents=True)
+    old.write_text("hand-edited content\n", encoding="utf-8")
+    manifest["files"]["commands/resume.md"] = inst.file_hash("original content\n")  # doesn't match current
+
+    inst.remove_renamed_file(tmp_path, "commands/resume.md", manifest, dry_run=False)
+
+    assert old.exists()
+    assert old.read_text(encoding="utf-8") == "hand-edited content\n"
+
+
+def test_remove_renamed_file_is_a_noop_when_never_installed(tmp_path):
+    manifest = fresh_manifest()
+    inst.remove_renamed_file(tmp_path, "commands/resume.md", manifest, dry_run=False)
+    assert not (tmp_path / "commands" / "resume.md").exists()

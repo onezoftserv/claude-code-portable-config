@@ -105,8 +105,18 @@ def test_local_json_ignores_unrecognized_top_level_keys(tmp_path, monkeypatch):
         '{"model": "haiku", "_comment": "not a real key", "theme": "dark"}', encoding="utf-8"
     )
     monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
-    local = inst.load_local_overrides()
+    local = inst.load_local_overrides({"model": "opusplan"})
     assert local == {"model": "haiku"}
+
+
+def test_local_json_allows_overriding_any_base_scalar_key_not_just_model_and_fallback(tmp_path, monkeypatch):
+    # Regression: the allowed set used to be a hardcoded ("model",
+    # "fallbackModel") tuple, so a new key added to settings.base.json
+    # (e.g. advisorModel) had no per-machine override at all.
+    (tmp_path / "settings.local.json").write_text('{"advisorModel": "sonnet"}', encoding="utf-8")
+    monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
+    local = inst.load_local_overrides({"model": "opusplan", "advisorModel": "opus"})
+    assert local == {"advisorModel": "sonnet"}
 
 
 def test_local_json_rejects_a_string_where_a_permission_list_is_required(tmp_path, monkeypatch):
@@ -118,7 +128,7 @@ def test_local_json_rejects_a_string_where_a_permission_list_is_required(tmp_pat
     )
     monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
     with pytest.raises(SystemExit):
-        inst.load_local_overrides()
+        inst.load_local_overrides({"model": "opusplan"})
 
 
 def test_local_json_rejects_a_list_where_remove_must_be_an_object(tmp_path, monkeypatch):
@@ -130,16 +140,17 @@ def test_local_json_rejects_a_list_where_remove_must_be_an_object(tmp_path, monk
     )
     monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
     with pytest.raises(SystemExit):
-        inst.load_local_overrides()
+        inst.load_local_overrides({"model": "opusplan"})
 
 
 def test_local_json_rejects_fallback_model_as_a_bare_string(tmp_path, monkeypatch):
     # The schema requires an array; a bare string is the natural typo and
-    # would otherwise write an invalid settings.json.
+    # would otherwise write an invalid settings.json. Caught generically by
+    # the type-must-match-base check, not a fallbackModel special case.
     (tmp_path / "settings.local.json").write_text('{"fallbackModel": "sonnet"}', encoding="utf-8")
     monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
     with pytest.raises(SystemExit):
-        inst.load_local_overrides()
+        inst.load_local_overrides({"fallbackModel": ["sonnet"]})
 
 
 def test_local_only_scalar_key_is_not_silently_ignored():

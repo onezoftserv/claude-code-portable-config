@@ -15,15 +15,18 @@ safely updates it to the new repo version; one that no longer matches was
 edited by hand and is left alone. Without this, "rerun to upgrade" silently
 does nothing for anything you (or a previous run) already wrote.
 
-settings.json's managed scalar keys (model, fallbackModel) work differently:
-this installer fully owns them and always overwrites them to match
-settings.base.json (merged with settings.local.json, if you have one at the
-repo root — gitignored, not the same file as Claude Code's own per-project
-.claude/settings.local.json). To pin a different value on one machine,
-put it in settings.local.json, not by hand-editing the installed
-settings.json — a hand-edit there will be overwritten on the next run.
-Permission list rules still use the manifest's add/retract tracking, since
-those need to merge with rules you or Claude Code added directly.
+settings.json's managed scalar keys (every top-level key settings.base.json
+sets, other than "permissions") work differently: this installer fully
+owns them and always overwrites them to match settings.base.json (merged
+with settings.local.json, if you have one at the repo root — gitignored,
+not the same file as Claude Code's own per-project .claude/settings.local.json).
+Any of those keys can be overridden per machine in settings.local.json --
+the allowed set is derived from settings.base.json's own keys, not a fixed
+list. To pin a different value on one machine, put it in settings.local.json,
+not by hand-editing the installed settings.json — a hand-edit there will be
+overwritten on the next run. Permission list rules still use the manifest's
+add/retract tracking, since those need to merge with rules you or Claude
+Code added directly.
 
 The PreToolUse hook uses exec-form args (no shell involved at all).
 statusLine has no exec-form in the schema, so its command is a shell
@@ -61,7 +64,6 @@ STATUSLINE_SCRIPT_NAME = "status_line.py"
 PERMISSION_LIST_KEYS = ("allow", "ask", "deny")
 MANIFEST_NAME = ".portable-config-manifest.json"
 LOCAL_SETTINGS_NAME = "settings.local.json"
-LOCAL_SCALAR_KEYS = ("model", "fallbackModel")
 
 
 def resolve_target(cli_target: Optional[str]) -> Path:
@@ -108,14 +110,19 @@ def die(message: str) -> None:
     sys.exit(1)
 
 
-def validate_local_overrides(allowed: dict, path: Path) -> None:
+def validate_local_overrides(allowed: dict, base: dict, path: Path) -> None:
     """Fail loudly and BEFORE anything is written, rather than crash
     mid-install (leaving CLAUDE.md/commands/agents/hooks written but
     settings.json/manifest not) or silently corrupt settings.json with the
     wrong shape (a string iterated as one rule per character, etc.)."""
-    for key in LOCAL_SCALAR_KEYS:
-        if key in allowed and key == "fallbackModel" and not isinstance(allowed[key], list):
-            die(f"{path}: {key!r} must be an array (e.g. [\"sonnet\"]), got {allowed[key]!r}")
+    for key, value in allowed.items():
+        if key == "permissions":
+            continue
+        if key in base and type(value) is not type(base[key]):
+            die(
+                f"{path}: {key!r} must be the same type as settings.base.json's value "
+                f"({type(base[key]).__name__}), got {type(value).__name__} ({value!r})"
+            )
 
     perms = allowed.get("permissions")
     if perms is None:
@@ -134,19 +141,25 @@ def validate_local_overrides(allowed: dict, path: Path) -> None:
                 die(f"{path}: 'permissions.remove.{key}' must be an array of rule strings, got {type(remove[key]).__name__}")
 
 
-def load_local_overrides() -> dict:
+def load_local_overrides(base: dict) -> dict:
     """settings.local.json at the repo root -- gitignored, per-machine
     overrides. NOT Claude Code's own .claude/settings.local.json (that one
-    is project-scoped only); this one is read by this script alone."""
+    is project-scoped only); this one is read by this script alone.
+
+    The allowed scalar keys are derived from settings.base.json's own keys
+    (whatever it manages, minus "permissions"), not a hardcoded list --
+    otherwise a new key added to base can't be overridden per machine
+    until this script is also updated by hand."""
     path = REPO_ROOT / LOCAL_SETTINGS_NAME
     if not path.exists():
         return {}
     raw = load_json_or_die(path)
-    allowed = {k: v for k, v in raw.items() if k in LOCAL_SCALAR_KEYS or k == "permissions"}
+    managed_scalar_keys = set(base) - {"permissions"}
+    allowed = {k: v for k, v in raw.items() if k in managed_scalar_keys or k == "permissions"}
     ignored = sorted(set(raw) - set(allowed))
     if ignored:
         print(f"  ignoring unrecognized {LOCAL_SETTINGS_NAME} key(s): {ignored}")
-    validate_local_overrides(allowed, path)
+    validate_local_overrides(allowed, base, path)
     return allowed
 
 
@@ -159,6 +172,26 @@ def save_manifest(target: Path, manifest: dict, dry_run: bool) -> None:
 def timestamped_backup(dst: Path) -> Path:
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     return dst.with_name(f"{dst.name}.{ts}.bak")
+
+
+def remove_renamed_file(target: Path, rel_key: str, manifest: dict, dry_run: bool) -> None:
+    """A file this installer previously shipped was renamed or dropped (e.g.
+    commands/resume.md -> pickup.md, since "resume" shadowed Claude Code's
+    own built-in command). Remove the old one, but only if it still matches
+    what we wrote -- if it was hand-edited, leave it, same as sync_managed_file."""
+    dst = target / rel_key
+    recorded_hash = manifest["files"].get(rel_key)
+    if recorded_hash is None or not dst.exists():
+        return
+    if file_hash(dst.read_text(encoding="utf-8-sig")) != recorded_hash:
+        print(f"  keeping    {dst} (hand-edited; would otherwise remove it, it's been renamed/dropped upstream)")
+        return
+    if dry_run:
+        print(f"  would remove {dst} (renamed/dropped upstream)")
+        return
+    dst.unlink()
+    manifest["files"].pop(rel_key, None)
+    print(f"  removed    {dst} (renamed/dropped upstream)")
 
 
 def sync_managed_file(src: Path, dst: Path, rel_key: str, manifest: dict, force: bool, dry_run: bool) -> None:
@@ -365,7 +398,8 @@ def main() -> None:
         print("  NOTE: this looks like a virtualenv interpreter — if you delete this venv later, the hook breaks silently until you rerun this installer.")
 
     manifest = load_manifest(target)
-    local_overrides = load_local_overrides()
+    base_settings = load_json_or_die(REPO_ROOT / "settings.base.json")
+    local_overrides = load_local_overrides(base_settings)
     print(f"Local overrides: {LOCAL_SETTINGS_NAME} " + ("found, applying" if local_overrides else f"none (create {LOCAL_SETTINGS_NAME} at the repo root to override per-machine)"))
 
     existing_settings_path = target / "settings.json"
@@ -377,6 +411,7 @@ def main() -> None:
     sync_managed_file(REPO_ROOT / "CLAUDE.md", target / "CLAUDE.md", "CLAUDE.md", manifest, args.force, args.dry_run)
 
     print("\nCommands:")
+    remove_renamed_file(target, "commands/resume.md", manifest, args.dry_run)  # -> pickup.md; "resume" shadowed the built-in
     for src in sorted((REPO_ROOT / "commands").glob("*.md")):
         rel_key = f"commands/{src.name}"
         sync_managed_file(src, target / "commands" / src.name, rel_key, manifest, args.force, args.dry_run)
@@ -409,7 +444,6 @@ def main() -> None:
         print(f"  wrote      {dst}")
 
     print("\nsettings.json:")
-    base_settings = load_json_or_die(REPO_ROOT / "settings.base.json")
     merged, hook_entry = merge_settings(base_settings, existing_settings, manifest, hooks_target_dir, local_overrides)
 
     if args.dry_run:

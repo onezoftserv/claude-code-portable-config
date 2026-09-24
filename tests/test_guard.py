@@ -35,6 +35,14 @@ CASES = [
     (r"Remove-Item -r -fo C:\temp\x", True),
     (r"rd /s /q C:\temp\x", True),
     ("DROP TABLE users;", True),
+    # bash -c / -Command / cmd /c: the quoted string IS the command, not
+    # incidental text -- must still be caught, not stripped away with the
+    # other quoted spans.
+    ('bash -c "rm -rf build"', True),
+    ("sh -c 'git push --force origin main'", True),
+    ('pwsh -Command "Remove-Item -Recurse -Force x"', True),
+    ('cmd /c "rd /s /q C:\\temp\\x"', True),
+    ('bash -c "npm test"', False),
 ]
 
 

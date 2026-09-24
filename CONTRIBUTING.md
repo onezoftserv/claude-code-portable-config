@@ -12,11 +12,11 @@ This is a personal Claude Code config, published so it's easy to install and so 
 
 ## Adding a hook
 
-Put the script in `hooks/common/`, wire it into `scripts/install.py`'s hook-merging logic (or add a new merge function if it's not a `PreToolUse` guard), and add test cases to `tests/`. Keep it pure-stdlib and cheap — the guard hook runs on every matching tool call, so a slow or LLM-backed hook (`type: "prompt"`/`"agent"`) defeats the token-efficiency point of this repo unless there's a specific reason for it.
+Put the script in `hooks/common/`, wire it into `scripts/install.py`'s hook-merging logic (or add a new merge function if it's not a `PreToolUse` guard), and add test cases to `tests/`. Keep it pure-stdlib and cheap — the guard hook runs on every matching tool call, so a slow or LLM-backed hook (`type: "prompt"`/`"agent"`) defeats the token-efficiency point of this repo unless there's a specific reason for it. If you do add one of those, set `model` explicitly — both types default to Haiku/a small model when it's unset.
 
 ## Adding an OS-specific behavior
 
-Most things here are OS-agnostic Python; `hooks/windows/`, `hooks/mac/`, `hooks/linux/` exist for the genuine exceptions (see their READMEs). Don't add OS branching unless you've hit a real platform difference — most "portability" problems here turned out to have a single cross-platform answer instead (e.g. `sys.executable` + exec-form `args` instead of guessing `python` vs `python3` vs `py`).
+Everything here is OS-agnostic Python on purpose. Don't add OS branching unless you've hit a real platform difference — most "portability" problems here turned out to have a single cross-platform answer instead of one: `sys.executable` + exec-form `args` instead of guessing `python` vs `python3` vs `py`, `shutil.which("bash")` instead of assuming a shell. If you genuinely need OS-specific behavior (clipboard, notifications, path separators), put the script in `hooks/common/` like everything else and branch on `platform.system()` inside it — there's no separate `hooks/windows/`-style directory; one existed early on, held nothing but READMEs, and was removed.
 
 ## Commit style
 

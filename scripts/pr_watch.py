@@ -10,11 +10,32 @@ Usage: python pr_watch.py <pr-number> [--minutes 8] [--interval 45]
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
 
 ENDPOINT_TEMPLATES = ["pulls/{n}/comments", "pulls/{n}/reviews", "issues/{n}/comments"]
+_HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def parse_concatenated_json(text: str) -> list:
+    """`gh api --paginate` concatenates JSON arrays back to back with no
+    separator -- plain json.loads() can't parse that, so decode one value
+    at a time and flatten. Malformed input raises json.JSONDecodeError,
+    same as json.loads would."""
+    text = text.strip()
+    if not text:
+        return []
+    items = []
+    decoder = json.JSONDecoder()
+    idx = 0
+    while idx < len(text):
+        obj, idx = decoder.raw_decode(text, idx)
+        items.extend(obj if isinstance(obj, list) else [obj])
+        while idx < len(text) and text[idx] in " \n\t\r":
+            idx += 1
+    return items
 
 
 def gh_json(path: str) -> list:
@@ -25,19 +46,11 @@ def gh_json(path: str) -> list:
     if result.returncode != 0:
         print(f"[pr_watch] gh api {path} failed: {result.stderr.strip()}", file=sys.stderr)
         return []
-    text = result.stdout.strip()
-    if not text:
+    try:
+        return parse_concatenated_json(result.stdout)
+    except json.JSONDecodeError as e:
+        print(f"[pr_watch] gh api {path} returned unparseable JSON: {e}", file=sys.stderr)
         return []
-    # --paginate concatenates JSON arrays back to back with no separator.
-    items = []
-    decoder = json.JSONDecoder()
-    idx = 0
-    while idx < len(text):
-        obj, idx = decoder.raw_decode(text, idx)
-        items.extend(obj if isinstance(obj, list) else [obj])
-        while idx < len(text) and text[idx] in " \n\t\r":
-            idx += 1
-    return items
 
 
 def repo_slug() -> str:
@@ -72,10 +85,12 @@ def main() -> None:
                 if key in seen:
                     continue
                 seen.add(key)
-                author = (item.get("user") or {}).get("login", "?")
-                body = (item.get("body") or "").strip().replace("\n", " ")
+                body = _HTML_COMMENT.sub(" ", item.get("body") or "").strip().replace("\n", " ")
+                if not body:
+                    continue  # an approve-only review, etc. -- nothing to relay
                 if len(body) > 240:
                     body = body[:240] + "..."
+                author = (item.get("user") or {}).get("login", "?")
                 print(f"[pr_watch] {author}: {body}")
         time.sleep(args.interval)
 
