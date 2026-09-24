@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ## [Unreleased]
 
 ### Changed
-- `adversarial-reviewer`'s default model raised from Sonnet to Opus — it's a second opinion, so it shouldn't run on a weaker model than the main thread. `model: "fable"` is now the escalation for the really-complex tier, not just "opus vs. default."
+- `adversarial-reviewer` model tiering clarified into three explicit levels: Sonnet default (standard review), `model: "opus"` for complex/high-stakes, `model: "fable"` for the really-complex tier on top of that — not just an opus/default toggle.
 - Pinned `pytest-cov`/`coverage` versions in CI: an unpinned `coverage` install let a since-changed subprocess-measurement behavior silently shift the reported number (52% was always correct; a locally-cached older `coverage` version was over-crediting e2e subprocess tests).
 
 ## [1.0.0] - 2026-09-23
