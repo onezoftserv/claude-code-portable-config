@@ -37,7 +37,7 @@ python scripts/install.py
 
 ## What's in it
 
-**Model routing.** `settings.base.json` sets `"model": "opusplan"` — Opus while planning, Sonnet otherwise, enforced by the harness rather than left as a prose reminder. `CLAUDE.md` reserves Haiku for genuinely mechanical work and says when to pass `model: "opus"` on a subagent call explicitly.
+**Model routing.** `settings.base.json` sets `"model": "opusplan"` — Opus while planning, Sonnet otherwise, enforced by the harness rather than left as a prose reminder. `CLAUDE.md` reserves Haiku for genuinely mechanical work and tiers `adversarial-reviewer` explicitly: Sonnet default, `model: "opus"` for complex/high-stakes, `model: "fable"` for the really-complex tier on top of that.
 
 **A review workflow for complex work.** `CLAUDE.md` lays out an 8-step process for anything with an unclear root cause or that crosses module boundaries: understand → plan → adversarial plan review → implement → tests → adversarial code review → optional CodeRabbit pass → `/ship`. Small, well-understood changes skip the ceremony on purpose.
 
@@ -78,7 +78,7 @@ curl -fsSL .../install.sh | CLAUDE_PORTABLE_CONFIG_REF=v1.0.0 bash
 
 - **Portability**: no machine-specific paths in the repo. Only the installed, per-machine `settings.json` has them, and it isn't checked in. The guard hook bakes `sys.executable` as an absolute path using exec-form `args` (no shell), which is what makes it work on Windows, macOS and Linux without branching.
 - **Token efficiency**: `CLAUDE.md` stays short and stable — it's replayed every turn, and both verbosity and churn cost tokens. `opusplan` gets Opus during planning for free, at the harness level, instead of relying on Claude to remember to switch models mid-task (it can't).
-- **Upgrades that actually upgrade**: `scripts/install.py` tracks a manifest of what it last wrote. A file or setting still matching that gets upgraded automatically on rerun; one you've hand-edited since is left alone. It also self-verifies the guard hook actually fires after every install, so a silent no-op (wrong interpreter path, unsupported `args` form) shows up immediately instead of being discovered later.
+- **Upgrades that actually upgrade**: `scripts/install.py` tracks a manifest of what it last wrote. A prose file (`CLAUDE.md`, commands, agents) still matching that gets upgraded automatically on rerun; one you've hand-edited since is left alone. `settings.json`'s managed keys (`model`, `fallbackModel`) work differently — the installer fully owns them and always overwrites them (use `settings.local.json` for a per-machine value instead of hand-editing the installed file). It also self-verifies the guard hook actually fires after every install and fails the run if it doesn't, so a silent no-op (wrong interpreter path, unsupported `args` form) shows up immediately instead of being discovered later.
 
 ## Next steps
 

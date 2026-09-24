@@ -4,9 +4,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+- CodeQL scanning and Dependabot (GitHub Actions ecosystem) — both free/native to public repos.
+- `.coderabbit.yaml` and Codecov wiring in CI (coverage generation + upload); both apps still need a one-time browser install, so this is inert until then.
+- Status badges (test/CodeQL/Codecov/release/license) on the README.
+- `tests/test_status_line.py` — `hooks/common/status_line.py` was 0% covered; `format_status_line()` extracted as a pure function (same pattern as the guard hook's `is_dangerous()`) so it's testable without stdin/subprocess.
+- Validation in `install.py` for `settings.local.json`'s shape (a bare string where a permission list is required, a list where `permissions.remove` must be an object, `fallbackModel` as a non-array) — these used to crash mid-install or silently corrupt `settings.json` instead of failing loudly before anything is written.
+- `advisorModel: "opus"` and `subagentPromptCacheTtl: "1h"` in `settings.base.json` — the `advisor` tool has no per-call model choice, so this is the only way to make it consistently strong; the cache TTL bump matches how much this repo's own workflow leans on spawning subagents.
+
 ### Changed
+- README rewritten to match the `code.claude.com/docs` shape: hero line, Get started up top, capability blurbs, a "what I want to do" lookup table, Next steps links.
 - `adversarial-reviewer` model tiering clarified into three explicit levels: Sonnet default (standard review), `model: "opus"` for complex/high-stakes, `model: "fable"` for the really-complex tier on top of that — not just an opus/default toggle.
-- Pinned `pytest-cov`/`coverage` versions in CI: an unpinned `coverage` install let a since-changed subprocess-measurement behavior silently shift the reported number (52% was always correct; a locally-cached older `coverage` version was over-crediting e2e subprocess tests).
+- `merge_settings` now iterates over base's and local's keys together, not just base's — a scalar key present only in `settings.local.json` used to be silently ignored.
+- `install.py` exits nonzero when the post-install guard-hook verification fails, instead of only printing it — a fails-open hook could pass CI green before this.
+- Actions bumped: `actions/checkout`/`actions/setup-python` to v7, `codeql-action` to v4, `codecov-action` to v7.
+
+### Fixed
+- Coverage measurement: `--cov` was unscoped, so an old locally-cached `coverage` version credited e2e subprocess tests as covering code they didn't actually instrument, showing 75-92% locally against Codecov's correct 52%. Fixed by scoping `--cov=hooks/common --cov=scripts` and pinning `pytest-cov`/`coverage` versions in CI so the number can't silently drift again on some future release.
 
 ## [1.0.0] - 2026-09-23
 

@@ -103,6 +103,37 @@ def load_manifest(target: Path) -> dict:
     return manifest
 
 
+def die(message: str) -> None:
+    print(f"ERROR: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def validate_local_overrides(allowed: dict, path: Path) -> None:
+    """Fail loudly and BEFORE anything is written, rather than crash
+    mid-install (leaving CLAUDE.md/commands/agents/hooks written but
+    settings.json/manifest not) or silently corrupt settings.json with the
+    wrong shape (a string iterated as one rule per character, etc.)."""
+    for key in LOCAL_SCALAR_KEYS:
+        if key in allowed and key == "fallbackModel" and not isinstance(allowed[key], list):
+            die(f"{path}: {key!r} must be an array (e.g. [\"sonnet\"]), got {allowed[key]!r}")
+
+    perms = allowed.get("permissions")
+    if perms is None:
+        return
+    if not isinstance(perms, dict):
+        die(f"{path}: 'permissions' must be an object, got {type(perms).__name__}")
+    for key in PERMISSION_LIST_KEYS:
+        if key in perms and not isinstance(perms[key], list):
+            die(f"{path}: 'permissions.{key}' must be an array of rule strings, got {type(perms[key]).__name__}")
+    remove = perms.get("remove")
+    if remove is not None:
+        if not isinstance(remove, dict):
+            die(f"{path}: 'permissions.remove' must be an object keyed by allow/ask/deny, got {type(remove).__name__} -- did you mean {{\"ask\": {remove!r}}}?")
+        for key in PERMISSION_LIST_KEYS:
+            if key in remove and not isinstance(remove[key], list):
+                die(f"{path}: 'permissions.remove.{key}' must be an array of rule strings, got {type(remove[key]).__name__}")
+
+
 def load_local_overrides() -> dict:
     """settings.local.json at the repo root -- gitignored, per-machine
     overrides. NOT Claude Code's own .claude/settings.local.json (that one
@@ -115,6 +146,7 @@ def load_local_overrides() -> dict:
     ignored = sorted(set(raw) - set(allowed))
     if ignored:
         print(f"  ignoring unrecognized {LOCAL_SETTINGS_NAME} key(s): {ignored}")
+    validate_local_overrides(allowed, path)
     return allowed
 
 
@@ -282,9 +314,7 @@ def merge_settings(base: dict, existing: dict, manifest: dict, hooks_dir: Path, 
     settings.local.json and rerun; don't hand-edit the installed file."""
     merged = dict(existing)
 
-    for key in base:
-        if key == "permissions":
-            continue  # handled by merge_permission_lists below
+    for key in {*base, *local} - {"permissions"}:
         value = local[key] if key in local else base[key]
         source = LOCAL_SETTINGS_NAME if key in local else "settings.base.json"
         if merged.get(key) != value:
@@ -297,25 +327,28 @@ def merge_settings(base: dict, existing: dict, manifest: dict, hooks_dir: Path, 
     return merged, hook_entry
 
 
-def verify_guard_hook(hook_entry: dict) -> None:
+def verify_guard_hook(hook_entry: dict) -> bool:
     """Actually run the baked hook command against a known-dangerous
     payload. If this doesn't print an "ask" decision, the guard is
     silently doing nothing (wrong interpreter path, args form not
-    supported, etc.) and we want that loud, not discovered later."""
+    supported, etc.) and we want that loud -- including a nonzero exit
+    code, so CI (or a script) actually catches it instead of it being
+    a print statement nobody reads."""
     command = [hook_entry["command"], *hook_entry.get("args", [])]
     payload = b'{"tool_input":{"command":"rm -rf /"}}'
     try:
         result = subprocess.run(command, input=payload, capture_output=True, timeout=10)
     except (OSError, subprocess.SubprocessError) as e:
         print(f"  VERIFY FAILED: could not run the baked hook command ({e})")
-        return
+        return False
     if b'"permissionDecision": "ask"' in result.stdout or b'"permissionDecision":"ask"' in result.stdout:
         print("  verify OK: guard hook correctly flags `rm -rf /`")
-    else:
-        print(
-            "  VERIFY FAILED: guard hook did not flag `rm -rf /` — it will fail open. "
-            f"stdout={result.stdout!r} stderr={result.stderr!r}"
-        )
+        return True
+    print(
+        "  VERIFY FAILED: guard hook did not flag `rm -rf /` — it will fail open. "
+        f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    )
+    return False
 
 
 def main() -> None:
@@ -399,7 +432,9 @@ def main() -> None:
     save_manifest(target, manifest, args.dry_run)
 
     print("\nVerifying the guard hook actually fires:")
-    verify_guard_hook(hook_entry)
+    if not verify_guard_hook(hook_entry):
+        print("\nInstall completed, but the guard hook does not work -- treat this as failed.", file=sys.stderr)
+        sys.exit(1)
 
     print(
         "\nDone. If Claude Code was already running against this config dir, "

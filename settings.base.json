@@ -1,6 +1,8 @@
 {
   "model": "opusplan",
   "fallbackModel": ["sonnet"],
+  "advisorModel": "opus",
+  "subagentPromptCacheTtl": "1h",
   "permissions": {
     "allow": [
       "Bash(git status)",

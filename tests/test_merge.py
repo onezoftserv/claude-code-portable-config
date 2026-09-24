@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import install as inst  # noqa: E402
 
@@ -87,7 +89,7 @@ def test_local_permissions_are_unioned_in():
     assert set(merged["permissions"]["allow"]) == {"Bash(git status)", "Bash(npm test)"}
 
 
-def test_local_remove_retracts_a_base_rule_even_from_a_different_list():
+def test_local_remove_retracts_a_base_rule():
     # allow/ask/deny have their own precedence in Claude Code (deny > ask >
     # allow), so a rule can't be "overridden" by adding it to a higher-
     # precedence list -- `remove` deletes it outright instead.
@@ -105,6 +107,50 @@ def test_local_json_ignores_unrecognized_top_level_keys(tmp_path, monkeypatch):
     monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
     local = inst.load_local_overrides()
     assert local == {"model": "haiku"}
+
+
+def test_local_json_rejects_a_string_where_a_permission_list_is_required(tmp_path, monkeypatch):
+    # A bare string ("Bash(npm test)") iterates character by character in
+    # Python -- without validation this would silently write one broken
+    # permission rule per character instead of failing loudly.
+    (tmp_path / "settings.local.json").write_text(
+        '{"permissions": {"allow": "Bash(npm test)"}}', encoding="utf-8"
+    )
+    monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
+    with pytest.raises(SystemExit):
+        inst.load_local_overrides()
+
+
+def test_local_json_rejects_a_list_where_remove_must_be_an_object(tmp_path, monkeypatch):
+    # permissions.remove is keyed by allow/ask/deny; a bare list (the rule
+    # names themselves, no list-name) used to crash with AttributeError
+    # mid-install instead of failing before anything was written.
+    (tmp_path / "settings.local.json").write_text(
+        '{"permissions": {"remove": ["Bash(rm -rf*)"]}}', encoding="utf-8"
+    )
+    monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
+    with pytest.raises(SystemExit):
+        inst.load_local_overrides()
+
+
+def test_local_json_rejects_fallback_model_as_a_bare_string(tmp_path, monkeypatch):
+    # The schema requires an array; a bare string is the natural typo and
+    # would otherwise write an invalid settings.json.
+    (tmp_path / "settings.local.json").write_text('{"fallbackModel": "sonnet"}', encoding="utf-8")
+    monkeypatch.setattr(inst, "REPO_ROOT", tmp_path)
+    with pytest.raises(SystemExit):
+        inst.load_local_overrides()
+
+
+def test_local_only_scalar_key_is_not_silently_ignored():
+    # Regression: merge_settings used to iterate `for key in base`, so a
+    # key present only in settings.local.json (not in settings.base.json
+    # at all) was never even looked at.
+    base = {}
+    local = {"fallbackModel": ["sonnet"]}
+    manifest = fresh_manifest()
+    merged, _ = inst.merge_settings(base, {}, manifest, Path("/hooks"), local)
+    assert merged["fallbackModel"] == ["sonnet"]
 
 
 def test_merge_hooks_finds_block_by_any_matcher_and_updates_in_place():
