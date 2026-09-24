@@ -2,7 +2,7 @@
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are tags in this repo; `install.sh`/`install.ps1` can pin to any of them via `CLAUDE_PORTABLE_CONFIG_REF`.
 
-## [Unreleased]
+## [1.1.0] - 2026-09-24
 
 ### Added
 - CodeQL scanning and Dependabot (GitHub Actions ecosystem) — both free/native to public repos.
@@ -58,4 +58,5 @@ First tagged release. Everything below shipped on `main` before this repo had ve
 - **Symlinking installed files back into the repo clone**: skipped. The upgrade manifest gets most of the same benefit without Windows Developer-Mode/admin friction or a second code path to test on three OSes.
 - **A 4-arm eval comparing this config against plain model usage**: not built. Properly isolating model choice from config effects needs enough repeated runs that the eval would cost more than the config saves; revisit only if a specific rule is suspected of hurting rather than helping.
 
+[1.1.0]: https://github.com/onezoftserv/claude-code-portable-config/releases/tag/v1.1.0
 [1.0.0]: https://github.com/onezoftserv/claude-code-portable-config/releases/tag/v1.0.0
