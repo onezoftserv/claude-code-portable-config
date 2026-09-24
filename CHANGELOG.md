@@ -2,6 +2,12 @@
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are tags in this repo; `install.sh`/`install.ps1` can pin to any of them via `CLAUDE_PORTABLE_CONFIG_REF`.
 
+## [Unreleased]
+
+### Changed
+- `adversarial-reviewer`'s default model raised from Sonnet to Opus — it's a second opinion, so it shouldn't run on a weaker model than the main thread. `model: "fable"` is now the escalation for the really-complex tier, not just "opus vs. default."
+- Pinned `pytest-cov`/`coverage` versions in CI: an unpinned `coverage` install let a since-changed subprocess-measurement behavior silently shift the reported number (52% was always correct; a locally-cached older `coverage` version was over-crediting e2e subprocess tests).
+
 ## [1.0.0] - 2026-09-23
 
 First tagged release. Everything below shipped on `main` before this repo had version tags, folded into one entry.

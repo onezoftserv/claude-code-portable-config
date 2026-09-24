@@ -12,7 +12,7 @@ Run manually when starting work in a new project, not automatically. Never edit 
    - PR/comment style: plain wording, as little text as possible, bullets over prose.
    - Model routing: `opusplan` (Opus while planning), Sonnet by default, Haiku only for mechanical work.
    - The guard hook *asks* (doesn't block) before force-push/branch-delete, `git reset --hard`, recursive+forced deletes.
-   - `/code-review` (raised effort for complex/high-stakes work) plus an `adversarial-reviewer` pass (`model: opus` for high-stakes) before calling something done.
+   - `/code-review` (raised effort for complex/high-stakes work) plus an `adversarial-reviewer` pass (Opus by default, `model: fable` for the really-complex tier) before calling something done.
    For each item, classify it as one of:
    - **Contradiction** — the project's own `CLAUDE.md`/`CLAUDE.local.md`/rules say something that directly conflicts. CLAUDE.md files have no precedence (they all concatenate into context), so this is genuinely ambiguous and worth flagging loudly.
    - **Override** — the project's `settings.json`/`settings.local.json` sets something that legitimately wins (project settings outrank user settings). Not a conflict — just report which value applies here.
