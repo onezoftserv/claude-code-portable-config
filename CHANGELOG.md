@@ -11,6 +11,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 - `tests/test_status_line.py` — `hooks/common/status_line.py` was 0% covered; `format_status_line()` extracted as a pure function (same pattern as the guard hook's `is_dangerous()`) so it's testable without stdin/subprocess.
 - Validation in `install.py` for `settings.local.json`'s shape (a bare string where a permission list is required, a list where `permissions.remove` must be an object, `fallbackModel` as a non-array) — these used to crash mid-install or silently corrupt `settings.json` instead of failing loudly before anything is written.
 - `advisorModel: "opus"` and `subagentPromptCacheTtl: "1h"` in `settings.base.json` — the `advisor` tool has no per-call model choice, so this is the only way to make it consistently strong; the cache TTL bump matches how much this repo's own workflow leans on spawning subagents.
+- `commands/handoff.md` and `commands/resume.md` — write/read `.claude/handoff.md` for picking up in-progress work on another machine. Auto-memory explicitly excludes in-progress task state, so this isn't redundant with it.
+- `adversarial-reviewer` now explicitly checks subprocess/credential-handling code for injection and leak risk, not just general correctness, after researching whether a separate security-focused agent was warranted (it wasn't, for a repo this size — one added line covers the gap cheaper).
+- CLAUDE.md notes that a subagent spawned without an explicit `model` inherits the parent's *current* resolved model — during plan mode that's Opus, so an unscoped ad-hoc subagent spawned mid-plan can be pricier than expected.
+- `/ship` now reminds to add a `CHANGELOG.md` entry before pushing, if the project keeps one — this changelog itself went stale between several PRs before being backfilled manually.
 
 ### Changed
 - README rewritten to match the `code.claude.com/docs` shape: hero line, Get started up top, capability blurbs, a "what I want to do" lookup table, Next steps links.

@@ -52,6 +52,8 @@ git push --force-with-lease origin main   # doesn't -- the safe variant
 
 **`/check-repo-config`.** A read-only audit for when you start work in a different project: checks that repo's own `CLAUDE.md`/settings against a fixed checklist of this config's behaviors, and tells you which are a genuine contradiction versus a legitimate project-level override.
 
+**`/handoff` and `/resume`.** Write (or read back) `.claude/handoff.md` in the current project — decisions made, current state, next steps. Auto-memory explicitly doesn't cover in-progress task state, so this fills that gap specifically for switching machines mid-task; commit the file if you want it to travel.
+
 **Per-machine overrides.** `settings.local.json` (gitignored — copy `settings.local.example.json` to start one) merges on top of `settings.base.json` before either gets installed. Not the same file as Claude Code's own project-scoped `.claude/settings.local.json` — this one lives at the repo root and only `scripts/install.py` reads it. Hand-editing the installed `settings.json` directly doesn't stick, by design; the installer fully owns its managed keys so a plain rerun is a real upgrade, not a silent no-op.
 
 **Version pinning.** `CLAUDE_PORTABLE_CONFIG_REF` pins install/upgrade to a branch, tag, or full commit SHA instead of `main` — the rollback lever if an upgrade ever brings in something broken, since hooks and scripts always sync on every run.
@@ -70,6 +72,7 @@ curl -fsSL .../install.sh | CLAUDE_PORTABLE_CONFIG_REF=v1.0.0 bash
 | Add or tune a safety hook | `hooks/common/`, wired into `scripts/install.py` |
 | Change what `/ship` does | `commands/ship.md`, `scripts/pr_watch.py` |
 | Audit a different repo's config against this one | `/check-repo-config` |
+| Leave notes for picking up on another machine | `/handoff`, then `/resume` there |
 | Pin to or roll back to a specific version | `CLAUDE_PORTABLE_CONFIG_REF` |
 | See what changed between versions | `CHANGELOG.md` |
 | Add a hook, run the tests, understand the release process | `CONTRIBUTING.md` |

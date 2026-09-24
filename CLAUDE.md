@@ -8,6 +8,7 @@ Portable across machines. Edit this file in the source repo, not in `~/.claude` 
 - Haiku only for mechanical work: a single well-specified lookup, a trivial rename, formatting. Don't reach for it otherwise.
 - `prompt`/`agent`-type hooks default to Haiku/a small model when `model` is unset (confirmed in the hooks schema) — set `model` explicitly on those if you add any.
 - `adversarial-reviewer` defaults to Sonnet — fine for a standard review. Pass `model: "opus"` explicitly for complex/high-stakes work, and `model: "fable"` for the really-complex tier on top of that (see workflow below). Three tiers, not two: don't reach for Opus/Fable just because the workflow triggered at all.
+- A subagent spawned without an explicit `model` inherits the parent's *current* resolved model, not a fixed default — during plan mode that's Opus (see `opusplan` above), so an ad-hoc exploratory subagent spawned mid-plan can be pricier than it looks. Pass `model` explicitly on anything that doesn't need that.
 
 ## Token efficiency
 
