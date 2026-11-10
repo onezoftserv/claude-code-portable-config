@@ -1,0 +1,20 @@
+{
+  "_note": "Single source of truth for machine limits. Figures come from retailer listings and xTool's FAQ; confirm against the manufacturer spec sheets and set verified=true.",
+  "x2d": {
+    "name": "Bambu Lab X2D",
+    "verified": false,
+    "single_nozzle_mm": [256, 256, 260],
+    "dual_nozzle_mm": [235.5, 256, 256]
+  },
+  "m2": {
+    "name": "xTool M2 Color Craft",
+    "verified": false,
+    "laser_mm": [426, 320],
+    "ir_mm": [412, 310],
+    "print_mm": [300, 294]
+  },
+  "svg_roles": {
+    "cut": "#ff0000",
+    "score": "#0000ff"
+  }
+}

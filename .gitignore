@@ -1,0 +1,17 @@
+# generated
+build/
+libs/
+__pycache__/
+*.pyc
+.venv/
+
+# never commit machine credentials or network details
+.env
+.env.*
+*.gcode
+*.gcode.3mf
+
+# slicer / OS noise
+*.bak
+.DS_Store
+Thumbs.db

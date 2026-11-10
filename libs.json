@@ -1,0 +1,69 @@
+{
+  "_note": "Free libraries fetched into libs/ (gitignored) by scripts/fetch_libs.py. 'default' ones are fetched by setup; the rest with --all or by name. Licences were read from each repo's licence file at the commits in libs.lock.json; recheck after --update.",
+  "libs": [
+    {
+      "name": "BOSL2",
+      "url": "https://github.com/BelfrySCAD/BOSL2.git",
+      "kind": "openscad",
+      "licence": "BSD-2-Clause",
+      "default": true,
+      "use": "include <BOSL2/std.scad>  // rounding, threads, screws, gears, attachments"
+    },
+    {
+      "name": "gridfinity-rebuilt-openscad",
+      "url": "https://github.com/kennetek/gridfinity-rebuilt-openscad.git",
+      "kind": "openscad",
+      "licence": "MIT",
+      "default": true,
+      "use": "parametric Gridfinity bins and baseplates"
+    },
+    {
+      "name": "Round-Anything",
+      "url": "https://github.com/Irev-Dev/Round-Anything.git",
+      "kind": "openscad",
+      "licence": "MIT",
+      "default": false,
+      "use": "use <Round-Anything/polyround.scad>  // rounded polygons and extrusions"
+    },
+    {
+      "name": "NopSCADlib",
+      "url": "https://github.com/nophead/NopSCADlib.git",
+      "kind": "openscad",
+      "licence": "GPL-3.0",
+      "default": false,
+      "use": "models of real hardware (screws, bearings, fans, PCBs) for fit checks; GPL, so keep derived designs GPL or use for reference only"
+    },
+    {
+      "name": "MCAD",
+      "url": "https://github.com/openscad/MCAD.git",
+      "kind": "openscad",
+      "licence": "LGPL-2.1",
+      "default": false,
+      "use": "older general-purpose mechanical library; BOSL2 covers most of it"
+    },
+    {
+      "name": "lucide",
+      "url": "https://github.com/lucide-icons/lucide.git",
+      "kind": "svg",
+      "licence": "ISC",
+      "default": true,
+      "use": "icons/*.svg: 24x24 stroke-only icons, good for scoring"
+    },
+    {
+      "name": "tabler-icons",
+      "url": "https://github.com/tabler/tabler-icons.git",
+      "kind": "svg",
+      "licence": "MIT",
+      "default": false,
+      "use": "icons/outline (score) and icons/filled (engrave/print)"
+    },
+    {
+      "name": "bootstrap-icons",
+      "url": "https://github.com/twbs/icons.git",
+      "kind": "svg",
+      "licence": "MIT",
+      "default": false,
+      "use": "icons/*.svg: 16x16 filled icons, good for engraving"
+    }
+  ]
+}
