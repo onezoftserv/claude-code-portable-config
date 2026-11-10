@@ -171,5 +171,60 @@ class MeshCase(unittest.TestCase):
             self.assertTrue(any("watertight" in e for e in errors), errors)
 
 
+class SnapshotCase(unittest.TestCase):
+    def setUp(self):
+        import shutil
+
+        self.project = Path(tempfile.mkdtemp(dir=ROOT / "laser", prefix="_t-"))
+        self.addCleanup(shutil.rmtree, self.project, True)
+        shutil.copy(ROOT / "laser" / "_template" / "job.py", self.project / "job.py")
+
+    def snap(self, *extra):
+        import contextlib
+        import io
+
+        import snapshot
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = snapshot.main([str(self.project), "-m", "test", "--no-commit", *extra])
+        return code, out.getvalue()
+
+    def names(self):
+        import snapshot
+
+        return [v.name for v in snapshot.versions(self.project)]
+
+    def test_versions_are_numbered_and_frozen(self):
+        self.assertEqual(self.snap()[0], 0)
+        v1 = self.project / "versions" / "v001"
+        self.assertEqual(sorted(p.name for p in v1.iterdir()), ["VERSION.md", "job.py", "job.svg"])
+        self.assertEqual(check_svg.check(v1 / "job.svg")[0], [])
+
+        code, out = self.snap()  # unchanged: no new version
+        self.assertEqual((code, self.names()), (0, ["v001"]))
+        self.assertIn("no changes since v001", out)
+
+        job = self.project / "job.py"
+        job.write_text(job.read_text().replace("WIDTH = 80", "WIDTH = 70"))
+        before = (v1 / "job.svg").read_bytes()
+        self.assertEqual(self.snap()[0], 0)
+        self.assertEqual(self.names(), ["v001", "v002"])
+        self.assertEqual((v1 / "job.svg").read_bytes(), before)
+        self.assertIn('width="70mm"', (self.project / "versions" / "v002" / "job.svg").read_text())
+
+        self.assertEqual(self.snap("--force")[0], 0)
+        self.assertEqual(self.names(), ["v001", "v002", "v003"])
+
+    def test_failed_check_saves_nothing(self):
+        job = self.project / "job.py"
+        job.write_text(job.read_text().replace("job.cut_rect(0, 0, WIDTH, HEIGHT, r=CORNER)",
+                                               "job.cut_rect(5, 0, WIDTH, HEIGHT, r=CORNER)"))
+        code, out = self.snap()
+        self.assertEqual(code, 1)
+        self.assertIn("NOT SAVED", out)
+        self.assertEqual(self.names(), [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent.parent / "scripts"))
+# works from the project folder and from a frozen copy in versions/vNNN
+sys.path.insert(0, str(next(p for p in HERE.parents if (p / "scripts" / "svgjob.py").exists()) / "scripts"))
 from svgjob import Job  # noqa: E402
 
 # ---- parameters (mm) ----

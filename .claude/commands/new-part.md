@@ -11,6 +11,7 @@ Design a part for the X2D: $ARGUMENTS
 4. Run `python scripts/build_part.py printer/<kebab-name>` (add `--dual` for a two-material part). Fix and rerun until it prints `OK`.
 5. Read `build/preview.png` and confirm the shape is what was asked for.
 6. If anything was downloaded or copied, record it in `printer/<kebab-name>/SOURCES.md` (URL, author, licence).
-7. Report: file path, overall size, the parameters worth tuning, suggested orientation and material, and anything to assign by hand in Bambu Studio (filament per body, supports). Point to "First print of a new part" in `docs/checklists.md`.
+7. Save the version: `python scripts/snapshot.py printer/<kebab-name> -m "<what this version is>"` with the same build options. It commits and pushes.
+8. Report: the version path (`versions/vNNN/part.3mf`), overall size, the parameters worth tuning, suggested orientation and material, and anything to assign by hand in Bambu Studio (filament per body, supports). Point to "First print of a new part" in `docs/checklists.md`.
 
 Do not slice, upload or start a print.
