@@ -32,21 +32,40 @@ GPL note: a design that includes NopSCADlib code is a derived work. Use it to ch
 
 boxes.py output uses its own colours and units; run its SVG through `check_svg.py` and recolour to the convention here before use.
 
-## Model sites (reference or per-model download)
+## Where to search for free projects
 
-No bulk download, and every model has its own licence. Record what you take in the project's `SOURCES.md`.
+Claude cannot browse or download from these: most need a browser or a login. Find the project yourself, download it into the project folder, and record it in `SOURCES.md`. Every item has its own licence, and "free" very often means personal use only.
 
-| Site | Notes |
+### 3D printing
+
+| Site | Best for |
 |---|---|
-| [MakerWorld](https://makerworld.com) | Bambu's own; many models ship with X-series print profiles |
-| [Printables](https://www.printables.com) | Clear licence shown per model |
-| [Thingiverse](https://www.thingiverse.com) | Large, older catalogue |
-| [Thangs](https://thangs.com) | Search across several sites |
+| [MakerWorld](https://makerworld.com) | Bambu's own; many models ship with ready print profiles and multi-colour setups |
+| [Printables](https://www.printables.com) | General-purpose, well curated, licence shown clearly per model |
+| [Thingiverse](https://www.thingiverse.com) | Largest and oldest catalogue; quality varies |
+| [Thangs](https://thangs.com) | Search engine across many sites, including search by shape |
+| [Yeggi](https://www.yeggi.com) | Meta-search across model sites |
+| [Cults3D](https://cults3d.com) | Mix of free and paid; strong on decorative models |
+| [MyMiniFactory](https://www.myminifactory.com) | Miniatures and figures; free section |
 | [NIH 3D](https://3d.nih.gov) | Scientific and medical models |
 | [Smithsonian 3D](https://3d.si.edu) | Museum scans; open-access items are CC0 |
 | [NASA 3D Resources](https://nasa3d.arc.nasa.gov) | Spacecraft and terrain models |
 
-Common licence traps: "non-commercial" (no selling prints), "no derivatives" (no remixing), and "share-alike" (your remix carries the same licence).
+### Laser cutting, engraving and print-then-cut
+
+| Site | Best for |
+|---|---|
+| [Atomm](https://www.atomm.com) | xTool's community: finished projects that open in xTool Studio, with material settings |
+| [3axis.co](https://3axis.co) | Thousands of free laser files, decorative and craft; many are CDR or DXF, not SVG |
+| [Instructables](https://www.instructables.com) | Step-by-step builds with files attached |
+| [Printables](https://www.printables.com) and [Thingiverse](https://www.thingiverse.com) | Both carry laser-cut designs alongside 3D models |
+| [DXFforCNC](https://www.dxfforcnc.com) | Free DXF files without signup |
+| [Creative Fabrica](https://www.creativefabrica.com) and [Design Bundles](https://designbundles.net) | Craft SVGs; a free section inside mostly paid catalogues |
+| [SVG Repo](https://www.svgrepo.com) and [FreeSVG](https://freesvg.org) | Free vector artwork, much of it usable commercially |
+
+Files made for other machines carry settings that do not apply to the M2. Take the geometry, not the power and speed.
+
+Common licence traps: "non-commercial" (no selling what you make), "no derivatives" (no remixing), and "share-alike" (your remix carries the same licence).
 
 ## Real-part CAD (dimensions and fit checks)
 
