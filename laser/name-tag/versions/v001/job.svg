@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="90mm" height="50mm" viewBox="0 0 90 50">
+  <g id="print">
+    <rect x="5" y="35" width="80" height="10" fill="#1f7a8c" stroke="none"/>
+  </g>
+  <g id="score">
+    <path d="M 3 3 H 87 V 47 H 3 Z" fill="none" stroke="#0000ff" stroke-width="0.1"/>
+  </g>
+  <g id="cut">
+    <path d="M 7 19.0 A 2.0 2.0 0 0 1 11 19.0 V 31.0 A 2.0 2.0 0 0 1 7 31.0 Z" fill="none" stroke="#ff0000" stroke-width="0.1"/>
+    <rect x="0" y="0" width="90" height="50" rx="6" ry="6" fill="none" stroke="#ff0000" stroke-width="0.1"/>
+  </g>
+</svg>
