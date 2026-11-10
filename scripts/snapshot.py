@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import filecmp
+import os
 import re
 import shutil
 import subprocess
@@ -69,6 +70,22 @@ def same_as_latest(project: Path, sources: list[Path], build_args: list[str]) ->
     return (recorded.group(1) if recorded else "") == " ".join(build_args)
 
 
+def run_job(script: Path) -> bool:
+    """Run a laser job script and relay what it printed through our own stdout."""
+    # Both ends of the pipe must agree on an encoding; the Windows default cannot carry every path.
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+    )
+    for text in (result.stdout, result.stderr):
+        if text.strip():
+            print(text.rstrip())
+    return result.returncode == 0
+
+
 def build(project: Path, build_args: list[str]) -> list[Path] | None:
     """Run the project's build and checks. Return the output files, or None on failure."""
     out_dir = project / "build"
@@ -78,7 +95,7 @@ def build(project: Path, build_args: list[str]) -> list[Path] | None:
             return None
     elif (project / "job.py").exists():
         shutil.rmtree(out_dir, ignore_errors=True)
-        if subprocess.run([sys.executable, str(project / "job.py")]).returncode != 0:
+        if not run_job(project / "job.py"):
             return None
         svgs = sorted(out_dir.glob("*.svg"))
         if not svgs or check_svg.main([str(s) for s in svgs]) != 0:
