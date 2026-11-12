@@ -225,6 +225,25 @@ class SnapshotCase(unittest.TestCase):
         self.assertIn("NOT SAVED", out)
         self.assertEqual(self.names(), [])
 
+    def test_job_output_is_relayed_through_snapshot_stdout(self):
+        code, out = self.snap()
+        self.assertEqual(code, 0)
+        printed_paths = [Path(line) for line in out.splitlines()]
+        self.assertIn(self.project / "build" / "job.svg", printed_paths)
+
+    def test_crashing_job_shows_its_error_and_saves_nothing(self):
+        (self.project / "job.py").write_text("import sys\nsys.exit('boom from job')\n")
+        code, out = self.snap()
+        self.assertEqual(code, 1)
+        self.assertIn("boom from job", out)
+        self.assertIn("NOT SAVED", out)
+        self.assertEqual(self.names(), [])
+
+    def test_non_ascii_job_output_is_relayed(self):
+        (self.project / "job.py").write_text("print('\\u6728')\n")
+        _, out = self.snap()
+        self.assertIn("\u6728", out)
+
 
 if __name__ == "__main__":
     unittest.main()
