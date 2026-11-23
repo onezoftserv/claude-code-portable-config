@@ -7,12 +7,12 @@ hanging from carrier rails by thin tabs so each line goes onto the board in one 
 - Thinnest stroke about 1.1 mm: 0.4 mm nozzle, 0.2 mm layers or finer, slow outer walls.
 - Prints mirrored, readable face on the plate (`face_down = true` in `part.scad`). No supports:
   the tabs are short bridges at the back of the letters.
-- Two assemblies: one frame with both text lines, one short rail with the "&".
+- Two assemblies: one frame with both text lines, one short rail with the "&". Rails are 2 mm wide, side posts 1.2 mm: handle the frame gently.
 
 | Assembly | Width | Top edge of the rail from top of board | Left edge from left of board |
 |---|---|---|---|
-| BIENVENIDOS / A LA BODA DE | 200.9 mm | 181.5 mm | 204.3 mm |
-| & | 40.2 mm | 464.2 mm | 284.7 mm |
+| BIENVENIDOS / A LA BODA DE | 200.9 mm | 184.5 mm | 204.3 mm |
+| & | 40.2 mm | 467.2 mm | 284.7 mm |
 
 How to place:
 
