@@ -121,25 +121,28 @@ def rail(top, x0, x1, centre_x):
     return box(x0, top, x1, top + RAIL_H).difference(notch)
 
 
-def frame(lines, x0, x1, centre_x):
-    """Ladder frame for one or more lines: a rail above the first, between each pair, and below the last.
+def frame(lines, x0, x1, centre_x, below=True):
+    """Carrier for one or more lines: a rail above the first, between each pair, and (below=True) under the last.
 
-    Every letter gets tabs to the rail above it and one tab to the rail below it.
-    Returns (rails + posts, tabs, y of the frame's top edge, y of its bottom edge).
+    Every letter gets tabs to the rail above it and one tab to the rail below it, where there is one.
+    Side posts join the rails when there are several.
+    Returns (rails + posts, tabs, y of the carrier's top edge, y of its lowest point including letters).
     """
     tops = [lines[0]["top"] - RAIL_GAP - RAIL_H]
     for upper, lower in zip(lines, lines[1:]):
         tops.append((upper["bottom"] + lower["top"]) / 2 - RAIL_H / 2)
-    tops.append(lines[-1]["bottom"] + RAIL_GAP)
+    if below:
+        tops.append(lines[-1]["bottom"] + RAIL_GAP)
     rails = [rail(t, x0, x1, centre_x) for t in tops]
     y0, y1 = tops[0], tops[-1] + RAIL_H
-    posts = [box(x0, y0, x0 + POST_W, y1), box(x1 - POST_W, y0, x1, y1)]
+    posts = [box(x0, y0, x0 + POST_W, y1), box(x1 - POST_W, y0, x1, y1)] if len(tops) > 1 else []
     tabs = []
     for n, line in enumerate(lines):
         for piece in line["pieces"]:
             tabs += tabs_for(piece, tops[n] + RAIL_H, "top")
-            tabs += tabs_for(piece, tops[n + 1], "bottom", single=True)
-    return rails + posts, tabs, y0, y1
+            if n + 1 < len(tops):
+                tabs += tabs_for(piece, tops[n + 1], "bottom", single=True)
+    return rails + posts, tabs, y0, max(y1, lines[-1]["bottom"])
 
 
 def main():
@@ -153,7 +156,7 @@ def main():
     fx1 = max(i["right"] for i in text) + RAIL_OVER
     carrier, tabs, fy0, fy1 = frame(text, fx0, fx1, centre)
     ax0, ax1 = amp["left"] - 10, amp["right"] + 10
-    amp_carrier, amp_tabs, ay0, ay1 = frame([amp], ax0, ax1, centre)
+    amp_carrier, amp_tabs, ay0, ay1 = frame([amp], ax0, ax1, centre, below=False)   # top rail only
 
     # park the "&" frame 6 mm under the text frame, centred, then flip everything for OpenSCAD
     dx, dy = (fx0 + fx1) / 2 - (ax0 + ax1) / 2, fy1 + 6 - ay0
@@ -176,7 +179,7 @@ def main():
     longest = max(t.bounds[3] - t.bounds[1] for t in tabs + amp_tabs) - 1.1
     print(f"letters: {len(letters)} on 2 frames; tabs: {len(tabs)} on the text frame, {len(amp_tabs)} on the &; longest bridge {longest:.1f} mm")
     print(f"text frame: {fx1 - fx0:.1f} x {fy1 - fy0:.1f} mm; top edge {fy0:.1f} mm from the top of the board; left edge {fx0:.1f} mm from the left")
-    print(f"& frame: {ax1 - ax0:.1f} x {ay1 - ay0:.1f} mm; top edge {ay0:.1f} mm from the top of the board; left edge {ax0:.1f} mm from the left")
+    print(f"& rail: {ax1 - ax0:.1f} mm wide, {ay1 - ay0:.1f} mm with the letter; top edge {ay0:.1f} mm from the top of the board; left edge {ax0:.1f} mm from the left")
 
     # ---- template: one plate for the two text lines, one small plate for the "&" ----------
     def holes(item):
