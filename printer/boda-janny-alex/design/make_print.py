@@ -31,9 +31,9 @@ SIMPLIFY = 0.01
 
 # carrier rail: the letters of a line hang from it, already spaced, and it is cut off after gluing
 RAIL_GAP = 3.0        # clear space between the rail and the top of the capitals (room for cutters)
-RAIL_H = 5.0          # rail size, top to bottom
+RAIL_H = 2.0          # rail size, top to bottom
 RAIL_OVER = 9.0       # how far the frame reaches past the widest line, each side
-POST_W = 4.0          # side posts joining the two rails
+POST_W = 1.2          # side posts joining the two rails
 TAB_W = 0.8           # tab width when a letter has two
 TAB_W_SINGLE = 1.2    # tab width when a letter has only one
 TAB_SPREAD = 3.0      # two tabs must be at least this far apart
@@ -102,7 +102,8 @@ def rail_for(item, x0, x1, centre_x):
     """Rail above a line, with a V notch on the board's centre line. Returns (rail, bottom y)."""
     bottom = item["top"] - RAIL_GAP
     rail = box(x0, bottom - RAIL_H, x1, bottom)
-    notch = Polygon([(centre_x - 2, bottom - RAIL_H), (centre_x + 2, bottom - RAIL_H), (centre_x, bottom - RAIL_H + 2)])
+    d = RAIL_H / 2                      # never cut the rail in two
+    notch = Polygon([(centre_x - d, bottom - RAIL_H), (centre_x + d, bottom - RAIL_H), (centre_x, bottom - RAIL_H + d)])
     return rail.difference(notch), bottom
 
 
