@@ -31,9 +31,9 @@ BOARD, GOLD, BLACK = "#ebe4d6", "#b08d57", "#1a1a1a"
 
 PLAYFAIR = load_font(FONTS / "PlayfairDisplay.ttf", wght=400)
 GARAMOND = load_font(FONTS / "EBGaramond.ttf", wght=700)
-SCRIPT = load_font(FONTS / "HerrVonMuellerhoff-Regular.ttf")
+SCRIPT = load_font(FONTS / "PinyonScript-Regular.ttf")
 FONT_NAMES = {id(PLAYFAIR): "Playfair Display Regular", id(GARAMOND): "EB Garamond Bold",
-              id(SCRIPT): "Herr Von Muellerhoff"}
+              id(SCRIPT): "Pinyon Script"}
 
 # `grow` thickens every outline by that many mm per side so thin strokes survive 3D printing.
 # key, text, font, size, baseline (mm from the top), colour, grow
@@ -43,8 +43,7 @@ LINES = [
     ("janny", "JANNY", PLAYFAIR, dict(cap_height=95, tracking=2), 441, GOLD, 0.0),
     ("y", "&", GARAMOND, dict(cap_height=17), 488, BLACK, 0.15),
     ("alex", "ALEX", PLAYFAIR, dict(cap_height=95, tracking=2), 612, GOLD, 0.0),
-    ("fecha-1", "23 de Enero", SCRIPT, dict(x_height=24), 748, BLACK, 0.2),
-    ("fecha-2", "del 2027", SCRIPT, dict(x_height=24), 828, BLACK, 0.2),
+    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=19), 778, BLACK, 0.3),
 ]
 
 
