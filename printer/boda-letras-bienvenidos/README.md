@@ -3,10 +3,10 @@
 BIENVENIDOS, A LA BODA DE and the "&" for the Janny & Alex sign: 21 letters, 3 mm tall,
 held in carrier frames by thin tabs so each block goes onto the board in one piece.
 
-- Font EB Garamond Bold, 14 mm capitals (17 mm for the "&"), outlines thickened 0.15 mm per side.
-- Thinnest stroke about 1.1 mm: 0.4 mm nozzle, 0.2 mm layers or finer, slow outer walls.
+- Font EB Garamond Bold, 16 mm capitals (19.5 mm for the "&"), outlines thickened 0.15 mm per side.
+- Thinnest stroke about 1.2 mm: 0.4 mm nozzle, 0.2 mm layers or finer, slow outer walls.
 - Prints mirrored, readable face on the plate (`face_down = true` in `part.scad`). No supports:
-  the tabs are bridges of up to 7 mm at mid-height.
+  the tabs are bridges of up to 8 mm at mid-height.
 - In the text frame every letter hangs between a rail above (one or two tabs) and a rail below (one tab).
 - The "&" hangs from a single rail above it by two tabs, with nothing below.
 - Tabs are 0.6 mm thick and sit halfway up the side walls: they touch neither the front nor the back of a letter.
@@ -15,8 +15,8 @@ held in carrier frames by thin tabs so each block goes onto the board in one pie
 
 | Carrier | Size | Top edge from top of board | Left edge from left of board |
 |---|---|---|---|
-| BIENVENIDOS / A LA BODA DE | 200.9 x 54.9 mm | 184.5 mm | 204.3 mm |
-| & (rail only) | 40.2 mm wide | 467.2 mm | 284.7 mm |
+| BIENVENIDOS / A LA BODA DE | 227.7 x 61.0 mm | 226.5 mm | 191.0 mm |
+| & (rail only) | 43.1 mm wide | 550.9 mm | 283.2 mm |
 
 How to place:
 
