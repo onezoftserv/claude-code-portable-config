@@ -44,34 +44,50 @@ FONT_NAMES = {id(NAMES): "Oranienbaum", id(GARAMOND): "EB Garamond Bold",
 LINES = [
     ("bienvenidos", "BIENVENIDOS", GARAMOND, dict(cap_height=16, tracking=3.6), 284, BLACK, 0.15),
     ("a-la-boda-de", "A LA BODA DE", GARAMOND, dict(cap_height=16, tracking=3.6), 318, BLACK, 0.15),
-    ("janny", "JANNY", NAMES, dict(cap_height=120, tracking=1.5), 549, GOLD, 0.0),
-    ("y", "&", GARAMOND, dict(cap_height=19.5), 584, BLACK, 0.15),
-    ("alex", "ALEX", NAMES, dict(cap_height=120, tracking=1.5), 719, GOLD, 0.0),
-    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=32), 869, BLACK, 0.05),
+    ("janny", "JANNY", NAMES, dict(cap_height=135, tracking=1.5), 564, GOLD, 0.0),
+    ("y", "&", GARAMOND, dict(cap_height=19.5), 599, BLACK, 0.15),
+    ("alex", "ALEX", NAMES, dict(cap_height=135, tracking=1.5), 749, GOLD, 0.0),
+    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=32), 899, BLACK, 0.05),
 ]
 
 
-NAME_GAP = 2.5        # clear space between neighbouring letters of the longest name, mm
-# Letters of a name made slightly narrower (1 = as drawn), so the longer name takes less room
-# and the shorter one needs less extra spacing to match its width.
+TOUCH = 0.2           # clearance that reads as "touching", mm
+# Letters of a name made slightly narrower (1 = as drawn).
 NAME_SQUEEZE = {"janny": 0.93}
+# How each letter joins the one before it, left to right:
+#   a number  = clear gap in mm (TOUCH = just touching); negative = overlap past touching
+#   "stem"    = the two letters share one upright stroke (a ligature)
+# A name listed here keeps these joins; any other name gets one even gap that makes it as
+# wide as the widest joined name.
+NAME_JOINS = {"janny": [-9, -11, "stem", -9]}
 
 
-def respace(parts, gap):
-    """Letters left to right, each exactly `gap` mm clear of the one before it."""
+def stems(part, cap):
+    """x centres of the leftmost and rightmost strokes crossing the middle of the letter."""
+    band = part.intersection(box(-1e4, -cap * 0.55, 1e4, -cap * 0.45))
+    xs = sorted((g.bounds[0] + g.bounds[2]) / 2 for g in polygons(band))
+    return xs[0], xs[-1]
+
+
+def respace(parts, joins, cap):
+    """Letters left to right, each joined to the one before it as `joins` says."""
     parts = sorted(parts, key=lambda g: g.bounds[0])
     out = [parts[0]]
-    for part in parts[1:]:
-        lo, hi = -400.0, 400.0                   # shift that makes the clearance equal to gap
+    for part, join in zip(parts[1:], joins):
+        if join == "stem":
+            out.append(translate(part, stems(out[-1], cap)[1] - stems(part, cap)[0], 0))
+            continue
+        clear = max(join, TOUCH)
+        lo, hi = -400.0, 400.0                   # shift that makes the clearance equal to `clear`
         for _ in range(40):
             mid = (lo + hi) / 2
             moved = translate(part, mid, 0)
             ahead = moved.bounds[0] > out[-1].bounds[0] + 1
-            if ahead and moved.distance(out[-1]) >= gap:
+            if ahead and moved.distance(out[-1]) >= clear:
                 hi = mid
             else:
                 lo = mid
-        out.append(translate(part, hi, 0))
+        out.append(translate(part, hi + min(join, 0), 0))
     return out
 
 
@@ -80,21 +96,27 @@ def width_of(parts):
 
 
 def spaced_names():
-    """Both names at the same width: the longest gets NAME_GAP, the others are opened up to match it."""
-    raw = {key: [scale(part, NAME_SQUEEZE.get(key, 1), 1, origin=(0, 0)) for part in layout(font, text, **size).parts]
-           for key, text, font, size, _, colour, _ in LINES if colour == GOLD}
-    tight = {key: respace(parts, NAME_GAP) for key, parts in raw.items()}
-    target = max(width_of(parts) for parts in tight.values())
-    out = {}
+    """Both names at the same width: joined names as specified, the others evenly spaced to match."""
+    raw, caps = {}, {}
+    for key, text, font, size, _, colour, _ in LINES:
+        if colour == GOLD:
+            k = NAME_SQUEEZE.get(key, 1)
+            raw[key] = [scale(part, k, 1, origin=(0, 0)) for part in layout(font, text, **size).parts]
+            caps[key] = size["cap_height"]
+    out = {key: (respace(raw[key], joins, caps[key]), joins) for key, joins in NAME_JOINS.items()}
+    target = max(width_of(parts) for parts, _ in out.values())
     for key, parts in raw.items():
-        lo, hi = NAME_GAP, 150.0
+        if key in out:
+            continue
+        n = len(parts) - 1
+        lo, hi = -20.0, 150.0
         for _ in range(40):
             mid = (lo + hi) / 2
-            if width_of(respace(parts, mid)) < target:
+            if width_of(respace(parts, [mid] * n, caps[key])) < target:
                 lo = mid
             else:
                 hi = mid
-        out[key] = (respace(parts, lo), lo)
+        out[key] = (respace(parts, [lo] * n, caps[key]), [round(lo, 1)] * n)
     return out
 
 
@@ -105,9 +127,10 @@ def build():
         line = layout(font, text, **size)
         geom = line.geom.buffer(grow, join_style=1) if grow else line.geom
         if colour == GOLD:
-            pieces, gap = names[key]                 # one per letter, respaced
-            geom = unary_union(pieces)
-            print(f"{text}: {gap:.1f} mm between letters")
+            letters, joins = names[key]              # respaced; joined letters become one piece
+            geom = unary_union(letters)
+            pieces = polygons(geom)
+            print(f"{text}: joins {joins}, {len(pieces)} piece(s)")
         else:
             pieces = polygons(geom)                  # joined script letters stay one piece
         # centre on the body of the letters, ignoring descenders and swashes below the baseline
