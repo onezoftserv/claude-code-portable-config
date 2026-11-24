@@ -17,7 +17,7 @@ Everything is in mm. Change LINES to move or resize anything.
 """
 from pathlib import Path
 
-from shapely.affinity import translate
+from shapely.affinity import scale, translate
 from shapely.geometry import box
 from shapely.ops import unary_union
 
@@ -51,7 +51,10 @@ LINES = [
 ]
 
 
-NAME_GAP = 5.0        # clear space between neighbouring letters of the longest name, mm
+NAME_GAP = 2.5        # clear space between neighbouring letters of the longest name, mm
+# Letters of a name made slightly narrower (1 = as drawn), so the longer name takes less room
+# and the shorter one needs less extra spacing to match its width.
+NAME_SQUEEZE = {"janny": 0.93}
 
 
 def respace(parts, gap):
@@ -78,7 +81,7 @@ def width_of(parts):
 
 def spaced_names():
     """Both names at the same width: the longest gets NAME_GAP, the others are opened up to match it."""
-    raw = {key: layout(font, text, **size).parts
+    raw = {key: [scale(part, NAME_SQUEEZE.get(key, 1), 1, origin=(0, 0)) for part in layout(font, text, **size).parts]
            for key, text, font, size, _, colour, _ in LINES if colour == GOLD}
     tight = {key: respace(parts, NAME_GAP) for key, parts in raw.items()}
     target = max(width_of(parts) for parts in tight.values())
