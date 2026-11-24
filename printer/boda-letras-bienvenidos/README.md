@@ -15,8 +15,8 @@ held in carrier frames by thin tabs so each block goes onto the board in one pie
 
 | Carrier | Size | Top edge from top of board | Left edge from left of board |
 |---|---|---|---|
-| BIENVENIDOS / A LA BODA DE | 227.7 x 61.0 mm | 226.5 mm | 191.0 mm |
-| & (rail only) | 43.1 mm wide | 550.9 mm | 283.2 mm |
+| BIENVENIDOS / A LA BODA DE | 227.7 x 61.0 mm | 262.5 mm | 191.0 mm |
+| & (rail only) | 43.1 mm wide | 560.9 mm | 283.2 mm |
 
 How to place:
 
