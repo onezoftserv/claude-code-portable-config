@@ -4,8 +4,8 @@ Two 0.8 mm plates with letter-shaped holes (0.25 mm clearance per side).
 
 | Plate | Size | Top edge from top of board | Left edge from left of board |
 |---|---|---|---|
-| BIENVENIDOS / A LA BODA DE | 198.9 x 60.9 mm | 181.5 mm | 205.3 mm |
-| & | 36.2 x 32.4 mm | 464.2 mm | 286.7 mm |
+| BIENVENIDOS / A LA BODA DE | 225.7 x 67.0 mm | 223.5 mm | 192.0 mm |
+| & | 39.1 x 34.8 mm | 547.9 mm | 285.2 mm |
 
 How to use:
 
