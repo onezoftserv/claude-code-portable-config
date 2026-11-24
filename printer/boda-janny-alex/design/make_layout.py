@@ -18,7 +18,7 @@ Everything is in mm. Change LINES to move or resize anything.
 from pathlib import Path
 
 from shapely.affinity import scale, translate
-from shapely.geometry import box
+from shapely.geometry import LineString, Polygon, box
 from shapely.ops import unary_union
 
 from textgeo import geom_path, layout, load_font, min_feature, polygons
@@ -47,26 +47,27 @@ LINES = [
     ("janny", "JANNY", NAMES, dict(cap_height=135, tracking=1.5), 564, GOLD, 0.0),
     ("y", "&", GARAMOND, dict(cap_height=19.5), 599, BLACK, 0.15),
     ("alex", "ALEX", NAMES, dict(cap_height=135, tracking=1.5), 749, GOLD, 0.0),
-    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=32), 899, BLACK, 0.05),
+    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=26), 886, BLACK, 0.1),
 ]
 
 
 TOUCH = 0.2           # clearance that reads as "touching", mm
 # Letters of a name made slightly narrower (1 = as drawn).
-NAME_SQUEEZE = {"janny": 0.93}
+NAME_SQUEEZE = {}
 # How each letter joins the one before it, left to right:
 #   a number  = clear gap in mm (TOUCH = just touching); negative = overlap past touching
-#   "stem"    = the two letters share one upright stroke (a ligature)
+#   "stem"    = the two letters share one upright stroke (a ligature): the second letter's own
+#               left stroke and its serifs are removed, so the join is one clean stroke
 # A name listed here keeps these joins; any other name gets one even gap that makes it as
 # wide as the widest joined name.
-NAME_JOINS = {"janny": [-9, -11, "stem", -9]}
+NAME_JOINS = {"janny": [6, -7, "stem", -7]}
+NAME_SMOOTH = 0.9     # joined letters: notches narrower than twice this are filled in, mm
 
 
-def stems(part, cap):
-    """x centres of the leftmost and rightmost strokes crossing the middle of the letter."""
+def strokes(part, cap):
+    """(left edge, right edge) of each stroke crossing the middle of the letter, left to right."""
     band = part.intersection(box(-1e4, -cap * 0.55, 1e4, -cap * 0.45))
-    xs = sorted((g.bounds[0] + g.bounds[2]) / 2 for g in polygons(band))
-    return xs[0], xs[-1]
+    return sorted((g.bounds[0], g.bounds[2]) for g in polygons(band))
 
 
 def respace(parts, joins, cap):
@@ -75,7 +76,13 @@ def respace(parts, joins, cap):
     out = [parts[0]]
     for part, join in zip(parts[1:], joins):
         if join == "stem":
-            out.append(translate(part, stems(out[-1], cap)[1] - stems(part, cap)[0], 0))
+            l0, l1 = strokes(out[-1], cap)[-1]           # the stroke both letters will share
+            r0, r1 = strokes(part, cap)[0]
+            moved = translate(part, (l0 + l1) / 2 - (r0 + r1) / 2, 0)
+            edge = max(l1, moved.bounds[0] + (r1 - r0)) + 0.01
+            moved = moved.difference(box(-1e4, -1e4, edge, 1e4))                 # its own left stroke
+            moved = moved.difference(box(-1e4, -cap * 0.2, edge + cap * 0.2, 1e4))  # and that stroke's foot
+            out.append(max(polygons(moved), key=lambda g: g.area))
             continue
         clear = max(join, TOUCH)
         lo, hi = -400.0, 400.0                   # shift that makes the clearance equal to `clear`
@@ -91,6 +98,58 @@ def respace(parts, joins, cap):
     return out
 
 
+def smooth(parts):
+    """Merge overlapping letters and fill the small notches where their serifs meet."""
+    groups = polygons(unary_union(parts))
+    closed = [g.buffer(NAME_SMOOTH, join_style=1).buffer(-NAME_SMOOTH, join_style=1) for g in groups]
+    return polygons(unary_union(closed))
+
+
+def slices(part, y):
+    """(left edge, right edge) of every stroke the letter has at height y, left to right."""
+    cut = part.intersection(box(-1e4, y - 0.05, 1e4, y + 0.05))
+    return sorted((g.bounds[0], g.bounds[2]) for g in polygons(cut) if not g.is_empty)
+
+
+def curved_bridge_a(part, cap):
+    """Hand-drawn A: the straight crossbar is replaced by a bridge that sweeps up from the left leg.
+
+    It leaves the thin left leg low down, arches up and levels off into the thick right leg,
+    like the A in the reference sign. Drawn at the same weight as the crossbar it replaces.
+    """
+    x0, y0, x1, y1 = part.bounds
+    cx = (x0 + x1) / 2
+    column = part.intersection(box(cx - 0.05, y0 - 1, cx + 0.05, y1 + 1))
+    bar = max(polygons(column), key=lambda g: g.bounds[1])            # lowest piece on the centre line
+    top, bottom = bar.bounds[1], bar.bounds[3]
+    weight = bottom - top
+    above, below = slices(part, top - 0.6), slices(part, bottom + 0.6)
+    hole = Polygon([(above[0][1], top - 0.6), (above[-1][0], top - 0.6),
+                    (below[-1][0], bottom + 0.6), (below[0][1], bottom + 0.6)])
+    legs = part.difference(hole).buffer(0)
+
+    def leg_centre(height, which):
+        seg = slices(part, -height)[which]
+        return ((seg[0] + seg[1]) / 2, -height)
+
+    start = leg_centre(cap * 0.25, 0)                                 # low on the thin left leg
+    end = leg_centre(cap * 0.39, -1)                                  # into the thick right leg
+    dx = end[0] - start[0]
+    c1 = (start[0] + dx * 0.16, end[1] - cap * 0.05)                  # spring up from the leg...
+    c2 = (start[0] + dx * 0.62, end[1] - cap * 0.09)                  # ...arch over and come down into the right leg
+    pts = []
+    for n in range(41):
+        t = n / 40
+        pts.append(tuple((1 - t) ** 3 * start[k] + 3 * (1 - t) ** 2 * t * c1[k]
+                         + 3 * (1 - t) * t * t * c2[k] + t ** 3 * end[k] for k in (0, 1)))
+    bridge = LineString(pts).buffer(weight / 2, cap_style=1, join_style=1)
+    return unary_union([legs, bridge])
+
+
+# Hand-drawn replacements, by letter. Each takes the letter's outline and its cap height.
+REDRAWN = {"A": curved_bridge_a}
+
+
 def width_of(parts):
     return max(p.bounds[2] for p in parts) - min(p.bounds[0] for p in parts)
 
@@ -101,8 +160,10 @@ def spaced_names():
     for key, text, font, size, _, colour, _ in LINES:
         if colour == GOLD:
             k = NAME_SQUEEZE.get(key, 1)
-            raw[key] = [scale(part, k, 1, origin=(0, 0)) for part in layout(font, text, **size).parts]
             caps[key] = size["cap_height"]
+            letters = sorted(layout(font, text, **size).parts, key=lambda g: g.bounds[0])
+            letters = [REDRAWN[ch](part, caps[key]) if ch in REDRAWN else part for ch, part in zip(text, letters)]
+            raw[key] = [scale(part, k, 1, origin=(0, 0)) for part in letters]
     out = {key: (respace(raw[key], joins, caps[key]), joins) for key, joins in NAME_JOINS.items()}
     target = max(width_of(parts) for parts, _ in out.values())
     for key, parts in raw.items():
@@ -128,8 +189,8 @@ def build():
         geom = line.geom.buffer(grow, join_style=1) if grow else line.geom
         if colour == GOLD:
             letters, joins = names[key]              # respaced; joined letters become one piece
-            geom = unary_union(letters)
-            pieces = polygons(geom)
+            pieces = smooth(letters) if key in NAME_JOINS else letters
+            geom = unary_union(pieces)
             print(f"{text}: joins {joins}, {len(pieces)} piece(s)")
         else:
             pieces = polygons(geom)                  # joined script letters stay one piece
