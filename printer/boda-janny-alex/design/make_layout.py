@@ -8,7 +8,8 @@ to suit the taller 24 x 48 in board. Writes, next to this file:
 
   layout.svg            the whole board, to scale
   medidas.svg           the same with dimensions
-  nombres-metalico.svg  JANNY and ALEX, real size, one closed outline per letter, for the supplier
+  nombres-metalico.svg  JANNY and ALEX, real size, closed outlines, for the supplier
+  nombres-metalico.dxf  the same for services that take DXF (needs ezdxf)
   letras-negras.svg     the painted 3D-printed lines at their board positions
   preview.png           picture of layout.svg
   medidas.md            sizes and positions of every line
@@ -304,6 +305,22 @@ def main():
     w = max(i["right"] for i in names) + 10 - x0
     h = max(i["bottom"] for i in names) + 10 - y0
     (HERE / "nombres-metalico.svg").write_text(svg(w, h, "".join(paths(i, "#000000", -x0, -y0) for i in names)), encoding="utf-8")
+
+    # the same names as DXF (mm, y up, closed polylines), for cutting services that do not take SVG
+    try:
+        import ezdxf
+    except ImportError:
+        print("nombres-metalico.dxf skipped (pip install ezdxf)")
+    else:
+        doc = ezdxf.new("R2010")
+        doc.units = ezdxf.units.MM
+        space = doc.modelspace()
+        for i in names:
+            for piece in i["pieces"]:
+                for ring in [piece.exterior, *piece.interiors]:
+                    pts = [(x - x0, h - (y - y0)) for x, y in list(ring.coords)[:-1]]
+                    space.add_lwpolyline(pts, close=True)
+        doc.saveas(HERE / "nombres-metalico.dxf")
 
     rows = ["| Line | Font | Letter height | Width | Top to bottom | Baseline from top | Thinnest stroke | Pieces |",
             "|---|---|---|---|---|---|---|---|"]

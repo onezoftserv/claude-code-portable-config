@@ -3,3 +3,4 @@ numpy
 lxml
 scipy
 networkx
+ezdxf
