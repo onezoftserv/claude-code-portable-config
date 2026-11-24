@@ -18,7 +18,7 @@ Everything is in mm. Change LINES to move or resize anything.
 from pathlib import Path
 
 from shapely.affinity import scale, translate
-from shapely.geometry import LineString, Polygon, box
+from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import unary_union
 
 from textgeo import geom_path, layout, load_font, min_feature, polygons
@@ -55,14 +55,14 @@ TOUCH = 0.2           # clearance that reads as "touching", mm
 # Letters of a name made slightly narrower (1 = as drawn).
 NAME_SQUEEZE = {}
 # The same, per letter: the reference has narrow upright letters next to a wide A.
-LETTER_SQUEEZE = {"N": 0.87, "E": 0.92}
+LETTER_SQUEEZE = {"N": 0.83}
 # How each letter joins the one before it, left to right:
 #   a number  = clear gap in mm (TOUCH = just touching); negative = overlap past touching
 #   "stem"    = the two letters share one upright stroke (a ligature): the second letter's own
 #               left stroke and its serifs are removed, so the join is one clean stroke
 # A name listed here keeps these joins; any other name gets one even gap that makes it as
 # wide as the widest joined name.
-NAME_JOINS = {"janny": [3, -11, "stem", -9]}
+NAME_JOINS = {"janny": [2, -11, "stem", -9]}
 NAME_SMOOTH = 0.9     # joined letters: notches narrower than twice this are filled in, mm
 
 
@@ -148,8 +148,44 @@ def curved_bridge_a(part, cap):
     return unary_union([legs, bridge])
 
 
+def drawn_e(part, cap):
+    """Hand-drawn E, after the E in the reference sign.
+
+    A slim upright with three hairline arms: long top and bottom arms, a short middle arm set
+    above the centre, and a small ball at the end of each arm. No slab serifs.
+    """
+    x0 = part.bounds[0]
+    stem = cap * 0.085                   # upright
+    hair = cap * 0.021                   # arms
+    width = cap * 0.56                   # whole letter
+    ball = cap * 0.021                   # terminal radius
+    mid_y = -cap * 0.61                  # middle arm sits above the centre
+    mid_len = cap * 0.25
+    shapes = [
+        box(x0, -cap, x0 + stem, 0),
+        box(x0, -cap, x0 + width - ball, -cap + hair),                       # top arm
+        box(x0, -hair, x0 + width - ball, 0),                                 # bottom arm
+        box(x0 + stem, mid_y - hair / 2, x0 + stem + mid_len, mid_y + hair / 2),
+        Point(x0 + width - ball, -cap + ball).buffer(ball),                   # top ball hangs just under the arm line
+        Point(x0 + width - ball, -ball).buffer(ball),                         # bottom ball sits on the base line
+        Point(x0 + stem + mid_len, mid_y).buffer(ball * 0.9),
+    ]
+    return unary_union(shapes)
+
+
+def drawn_l(part, cap):
+    """Hand-drawn L in the same manner as the E: slim upright, hairline foot, small ball at its end."""
+    x0 = part.bounds[0]
+    stem, hair, width, ball = cap * 0.085, cap * 0.021, cap * 0.50, cap * 0.021
+    return unary_union([
+        box(x0, -cap, x0 + stem, 0),
+        box(x0, -hair, x0 + width - ball, 0),
+        Point(x0 + width - ball, -ball).buffer(ball),
+    ])
+
+
 # Hand-drawn replacements, by letter. Each takes the letter's outline and its cap height.
-REDRAWN = {"A": curved_bridge_a}
+REDRAWN = {"A": curved_bridge_a, "E": drawn_e, "L": drawn_l}
 
 
 def width_of(parts):
