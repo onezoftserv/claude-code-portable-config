@@ -51,13 +51,60 @@ LINES = [
 ]
 
 
+NAME_GAP = 5.0        # clear space between neighbouring letters of the longest name, mm
+
+
+def respace(parts, gap):
+    """Letters left to right, each exactly `gap` mm clear of the one before it."""
+    parts = sorted(parts, key=lambda g: g.bounds[0])
+    out = [parts[0]]
+    for part in parts[1:]:
+        lo, hi = -400.0, 400.0                   # shift that makes the clearance equal to gap
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            moved = translate(part, mid, 0)
+            ahead = moved.bounds[0] > out[-1].bounds[0] + 1
+            if ahead and moved.distance(out[-1]) >= gap:
+                hi = mid
+            else:
+                lo = mid
+        out.append(translate(part, hi, 0))
+    return out
+
+
+def width_of(parts):
+    return max(p.bounds[2] for p in parts) - min(p.bounds[0] for p in parts)
+
+
+def spaced_names():
+    """Both names at the same width: the longest gets NAME_GAP, the others are opened up to match it."""
+    raw = {key: layout(font, text, **size).parts
+           for key, text, font, size, _, colour, _ in LINES if colour == GOLD}
+    tight = {key: respace(parts, NAME_GAP) for key, parts in raw.items()}
+    target = max(width_of(parts) for parts in tight.values())
+    out = {}
+    for key, parts in raw.items():
+        lo, hi = NAME_GAP, 150.0
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            if width_of(respace(parts, mid)) < target:
+                lo = mid
+            else:
+                hi = mid
+        out[key] = (respace(parts, lo), lo)
+    return out
+
+
 def build():
     out = []
+    names = spaced_names()
     for key, text, font, size, baseline, colour, grow in LINES:
         line = layout(font, text, **size)
         geom = line.geom.buffer(grow, join_style=1) if grow else line.geom
         if colour == GOLD:
-            pieces = line.parts                      # one per letter
+            pieces, gap = names[key]                 # one per letter, respaced
+            geom = unary_union(pieces)
+            print(f"{text}: {gap:.1f} mm between letters")
         else:
             pieces = polygons(geom)                  # joined script letters stay one piece
         # centre on the body of the letters, ignoring descenders and swashes below the baseline
