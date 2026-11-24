@@ -3,8 +3,8 @@
 
     python printer/boda-janny-alex/design/make_layout.py
 
-Proportions follow the client's reference photo (positions and widths as a
-share of the board width). Writes, next to this file:
+Proportions follow the client's reference photo, enlarged 15% and moved down
+to suit the taller 24 x 48 in board. Writes, next to this file:
 
   layout.svg            the whole board, to scale
   medidas.svg           the same with dimensions
@@ -37,13 +37,16 @@ FONT_NAMES = {id(PLAYFAIR): "Playfair Display Regular", id(GARAMOND): "EB Garamo
 
 # `grow` thickens every outline by that many mm per side so thin strokes survive 3D printing.
 # key, text, font, size, baseline (mm from the top), colour, grow
+# Layout history: the first version copied the reference photo's proportions (a 24 x 36 in board).
+# For this 24 x 48 in board every size is 15% larger and the block starts 231 mm from the top
+# instead of 190 mm, so it sits just above the middle of the taller board.
 LINES = [
-    ("bienvenidos", "BIENVENIDOS", GARAMOND, dict(cap_height=14, tracking=3.1), 204, BLACK, 0.15),
-    ("a-la-boda-de", "A LA BODA DE", GARAMOND, dict(cap_height=14, tracking=3.1), 234, BLACK, 0.15),
-    ("janny", "JANNY", PLAYFAIR, dict(cap_height=95, tracking=2), 441, GOLD, 0.0),
-    ("y", "&", GARAMOND, dict(cap_height=17), 488, BLACK, 0.15),
-    ("alex", "ALEX", PLAYFAIR, dict(cap_height=95, tracking=2), 612, GOLD, 0.0),
-    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=28), 778, BLACK, 0.05),
+    ("bienvenidos", "BIENVENIDOS", GARAMOND, dict(cap_height=16, tracking=3.6), 248, BLACK, 0.15),
+    ("a-la-boda-de", "A LA BODA DE", GARAMOND, dict(cap_height=16, tracking=3.6), 282, BLACK, 0.15),
+    ("janny", "JANNY", PLAYFAIR, dict(cap_height=109, tracking=2.3), 520, GOLD, 0.0),
+    ("y", "&", GARAMOND, dict(cap_height=19.5), 574, BLACK, 0.15),
+    ("alex", "ALEX", PLAYFAIR, dict(cap_height=109, tracking=2.3), 717, GOLD, 0.0),
+    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=32), 908, BLACK, 0.05),
 ]
 
 
