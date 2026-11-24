@@ -29,24 +29,25 @@ FONTS = HERE.parent / "fonts"
 BOARD_W, BOARD_H = 609.6, 1219.2     # 2 ft x 4 ft, portrait
 BOARD, GOLD, BLACK = "#ebe4d6", "#b08d57", "#1a1a1a"
 
-PLAYFAIR = load_font(FONTS / "PlayfairDisplay.ttf", wght=400)
+NAMES = load_font(FONTS / "Oranienbaum-Regular.ttf")
 GARAMOND = load_font(FONTS / "EBGaramond.ttf", wght=700)
 SCRIPT = load_font(FONTS / "LuxuriousScript-Regular.ttf")
-FONT_NAMES = {id(PLAYFAIR): "Playfair Display Regular", id(GARAMOND): "EB Garamond Bold",
+FONT_NAMES = {id(NAMES): "Oranienbaum", id(GARAMOND): "EB Garamond Bold",
               id(SCRIPT): "Luxurious Script"}
 
 # `grow` thickens every outline by that many mm per side so thin strokes survive 3D printing.
 # key, text, font, size, baseline (mm from the top), colour, grow
-# Layout history: the first version copied the reference photo's proportions (a 24 x 36 in board).
-# For this 24 x 48 in board every size is 15% larger and the block starts 231 mm from the top
-# instead of 190 mm, so it sits just above the middle of the taller board.
+# Spacing follows the reference photo (a 24 x 36 in board), measured in inches and enlarged 15%:
+# 3.8 in from the small lines to the first name, 1.7 in between the names, with the block
+# starting 268 mm from the top so it sits just above the middle of this taller 24 x 48 in board.
+# The names use a narrow face so they can be as tall as the reference's without running too wide.
 LINES = [
-    ("bienvenidos", "BIENVENIDOS", GARAMOND, dict(cap_height=16, tracking=3.6), 248, BLACK, 0.15),
-    ("a-la-boda-de", "A LA BODA DE", GARAMOND, dict(cap_height=16, tracking=3.6), 282, BLACK, 0.15),
-    ("janny", "JANNY", PLAYFAIR, dict(cap_height=109, tracking=2.3), 520, GOLD, 0.0),
-    ("y", "&", GARAMOND, dict(cap_height=19.5), 574, BLACK, 0.15),
-    ("alex", "ALEX", PLAYFAIR, dict(cap_height=109, tracking=2.3), 717, GOLD, 0.0),
-    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=32), 908, BLACK, 0.05),
+    ("bienvenidos", "BIENVENIDOS", GARAMOND, dict(cap_height=16, tracking=3.6), 284, BLACK, 0.15),
+    ("a-la-boda-de", "A LA BODA DE", GARAMOND, dict(cap_height=16, tracking=3.6), 318, BLACK, 0.15),
+    ("janny", "JANNY", NAMES, dict(cap_height=120, tracking=1.5), 549, GOLD, 0.0),
+    ("y", "&", GARAMOND, dict(cap_height=19.5), 584, BLACK, 0.15),
+    ("alex", "ALEX", NAMES, dict(cap_height=120, tracking=1.5), 719, GOLD, 0.0),
+    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=32), 869, BLACK, 0.05),
 ]
 
 

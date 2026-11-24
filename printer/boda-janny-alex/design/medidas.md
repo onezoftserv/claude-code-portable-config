@@ -5,11 +5,11 @@ Board: 609.6 x 1219.2 mm (2 x 4 ft), portrait. Every line is centred on the boar
 
 | Line | Font | Letter height | Width | Top to bottom | Baseline from top | Thinnest stroke | Pieces |
 |---|---|---|---|---|---|---|---|
-| BIENVENIDOS | EB Garamond Bold | 16 mm (cap) | 204 mm | 232 to 249 mm | 248 mm | 1.2 mm (after +0.15 mm per side) | 11 |
-| A LA BODA DE | EB Garamond Bold | 16 mm (cap) | 210 mm | 265 to 282 mm | 282 mm | 1.2 mm (after +0.15 mm per side) | 9 |
-| JANNY | Playfair Display Regular | 109 mm (cap) | 463 mm | 410 to 549 mm | 520 mm | 3.0 mm | 5 |
-| & | EB Garamond Bold | 19.5 mm (cap) | 23 mm | 556 to 575 mm | 574 mm | 1.5 mm (after +0.15 mm per side) | 1 |
-| ALEX | Playfair Display Regular | 109 mm (cap) | 383 mm | 607 to 717 mm | 717 mm | 3.0 mm | 4 |
-| Enero 23, 2027 | Luxurious Script | 32 mm (x-height) | 374 mm | 852 to 917 mm | 908 mm | 1.2 mm (after +0.05 mm per side) | 9 |
+| BIENVENIDOS | EB Garamond Bold | 16 mm (cap) | 204 mm | 268 to 285 mm | 284 mm | 1.2 mm (after +0.15 mm per side) | 11 |
+| A LA BODA DE | EB Garamond Bold | 16 mm (cap) | 210 mm | 301 to 318 mm | 318 mm | 1.2 mm (after +0.15 mm per side) | 9 |
+| JANNY | Oranienbaum | 120 mm (cap) | 454 mm | 426 to 552 mm | 549 mm | 3.1 mm | 5 |
+| & | EB Garamond Bold | 19.5 mm (cap) | 23 mm | 566 to 585 mm | 584 mm | 1.5 mm (after +0.15 mm per side) | 1 |
+| ALEX | Oranienbaum | 120 mm (cap) | 348 mm | 596 to 719 mm | 719 mm | 2.9 mm | 4 |
+| Enero 23, 2027 | Luxurious Script | 32 mm (x-height) | 374 mm | 813 to 878 mm | 869 mm | 1.2 mm (after +0.05 mm per side) | 9 |
 
-Supplier file `nombres-metalico.svg`: 483 x 327 mm page, letters at real size and real spacing.
+Supplier file `nombres-metalico.svg`: 474 x 313 mm page, letters at real size and real spacing.

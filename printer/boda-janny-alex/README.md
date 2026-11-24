@@ -11,4 +11,4 @@ Regenerate after changing anything in `design/make_layout.py`:
     pip install fonttools uharfbuzz shapely cairosvg
     python printer/boda-janny-alex/design/make_layout.py
 
-Status: design proposal. The printable letters and the placement template are not built yet.
+Status: layout agreed in outline; the first batch of printed letters is in `printer/boda-letras-bienvenidos`. The date line is not built yet.
