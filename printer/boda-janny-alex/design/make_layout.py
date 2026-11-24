@@ -29,10 +29,10 @@ FONTS = HERE.parent / "fonts"
 BOARD_W, BOARD_H = 609.6, 1219.2     # 2 ft x 4 ft, portrait
 BOARD, GOLD, BLACK = "#ebe4d6", "#b08d57", "#1a1a1a"
 
-NAMES = load_font(FONTS / "Oranienbaum-Regular.ttf")
+NAMES = load_font(FONTS / "AnticDidone-Regular.ttf")
 GARAMOND = load_font(FONTS / "EBGaramond.ttf", wght=700)
 SCRIPT = load_font(FONTS / "LuxuriousScript-Regular.ttf")
-FONT_NAMES = {id(NAMES): "Oranienbaum", id(GARAMOND): "EB Garamond Bold",
+FONT_NAMES = {id(NAMES): "Antic Didone, redrawn", id(GARAMOND): "EB Garamond Bold",
               id(SCRIPT): "Luxurious Script"}
 
 # `grow` thickens every outline by that many mm per side so thin strokes survive 3D printing.
@@ -44,23 +44,25 @@ FONT_NAMES = {id(NAMES): "Oranienbaum", id(GARAMOND): "EB Garamond Bold",
 LINES = [
     ("bienvenidos", "BIENVENIDOS", GARAMOND, dict(cap_height=16, tracking=3.6), 284, BLACK, 0.15),
     ("a-la-boda-de", "A LA BODA DE", GARAMOND, dict(cap_height=16, tracking=3.6), 318, BLACK, 0.15),
-    ("janny", "JANNY", NAMES, dict(cap_height=135, tracking=1.5), 564, GOLD, 0.0),
-    ("y", "&", GARAMOND, dict(cap_height=19.5), 599, BLACK, 0.15),
-    ("alex", "ALEX", NAMES, dict(cap_height=135, tracking=1.5), 749, GOLD, 0.0),
-    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=26), 886, BLACK, 0.1),
+    ("janny", "JANNY", NAMES, dict(cap_height=131, tracking=1.5), 560, GOLD, 0.0),
+    ("y", "&", GARAMOND, dict(cap_height=19.5), 595, BLACK, 0.15),
+    ("alex", "ALEX", NAMES, dict(cap_height=131, tracking=1.5), 741, GOLD, 0.0),
+    ("fecha", "Enero 23, 2027", SCRIPT, dict(x_height=26), 878, BLACK, 0.1),
 ]
 
 
 TOUCH = 0.2           # clearance that reads as "touching", mm
 # Letters of a name made slightly narrower (1 = as drawn).
 NAME_SQUEEZE = {}
+# The same, per letter: the reference has narrow upright letters next to a wide A.
+LETTER_SQUEEZE = {"N": 0.87, "E": 0.92}
 # How each letter joins the one before it, left to right:
 #   a number  = clear gap in mm (TOUCH = just touching); negative = overlap past touching
 #   "stem"    = the two letters share one upright stroke (a ligature): the second letter's own
 #               left stroke and its serifs are removed, so the join is one clean stroke
 # A name listed here keeps these joins; any other name gets one even gap that makes it as
 # wide as the widest joined name.
-NAME_JOINS = {"janny": [6, -7, "stem", -7]}
+NAME_JOINS = {"janny": [3, -11, "stem", -9]}
 NAME_SMOOTH = 0.9     # joined letters: notches narrower than twice this are filled in, mm
 
 
@@ -163,7 +165,7 @@ def spaced_names():
             caps[key] = size["cap_height"]
             letters = sorted(layout(font, text, **size).parts, key=lambda g: g.bounds[0])
             letters = [REDRAWN[ch](part, caps[key]) if ch in REDRAWN else part for ch, part in zip(text, letters)]
-            raw[key] = [scale(part, k, 1, origin=(0, 0)) for part in letters]
+            raw[key] = [scale(part, k * LETTER_SQUEEZE.get(ch, 1), 1, origin=(0, 0)) for ch, part in zip(text, letters)]
     out = {key: (respace(raw[key], joins, caps[key]), joins) for key, joins in NAME_JOINS.items()}
     target = max(width_of(parts) for parts, _ in out.values())
     for key, parts in raw.items():
