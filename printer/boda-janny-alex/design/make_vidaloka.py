@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""JANNY / ALEX in Vidaloka: a second version of the supplier file, same footprint as the first.
+"""JANNY / ALEX in Vidaloka: a second version of the supplier file.
 
     python printer/boda-janny-alex/design/make_vidaloka.py
 
 The letters are Vidaloka exactly as drawn (Google Fonts, OFL), nothing redrawn or joined.
-Both names have the same letter height and the same width, and the ink box is the same
-WIDTH x HEIGHT as nombres-metalico.svg, so either file drops into the same place on the board.
-Vidaloka is wider than Antic Didone, so the letters are shorter and the names sit further apart.
+Both names have the same letter height. JANNY is WIDTH wide at its natural spacing; ALEX is
+letter-spaced part of the way out to that width (SPREAD) and centred. GAP is the clear space
+between JANNY's baseline and the top of ALEX's capitals, sized so the "&" keeps its place on
+the board when JANNY's baseline stays at 560 mm.
 
 Writes, next to this file:
 
@@ -24,9 +25,11 @@ from textgeo import geom_path, layout, load_font, min_feature
 HERE = Path(__file__).resolve().parent
 FONT = load_font(HERE.parent / "fonts" / "Vidaloka-Regular.ttf")
 
-WIDTH, HEIGHT = 413.50, 312.19     # ink box of nombres-metalico.svg, mm
+WIDTH = 480.0        # widest name, mm (the board is 609.6 wide)
+GAP = 53.0           # first baseline to the cap top of the second name, mm
 MARGIN = 10.0
 NAMES = ["JANNY", "ALEX"]
+SPREAD = 0.5          # shorter names: 0 = natural letter spacing, 1 = spaced out to the full width
 
 
 def letters(text, cap, tracking):
@@ -42,7 +45,7 @@ def build():
     # the widest name at its natural spacing sets the letter height...
     natural = {t: width(letters(t, 100.0, 0.0)) for t in NAMES}
     cap = 100.0 * WIDTH / max(natural.values())
-    # ...and the others are letter-spaced out to the same width
+    # ...and the others are letter-spaced SPREAD of the way out to that width, then centred
     lines = []
     for text in NAMES:
         lo, hi = 0.0, 200.0
@@ -52,22 +55,23 @@ def build():
                 lo = mid
             else:
                 hi = mid
-        parts = letters(text, cap, lo)
-        x0 = min(p.bounds[0] for p in parts)
-        lines.append(dict(text=text, tracking=lo, parts=[translate(p, -x0, 0) for p in parts]))
-    # first name's ink top at y = 0, last name's ink bottom at y = HEIGHT
+        parts = letters(text, cap, lo * SPREAD)
+        x0 = min(p.bounds[0] for p in parts) - (WIDTH - width(parts)) / 2
+        lines.append(dict(text=text, tracking=lo * SPREAD, parts=[translate(p, -x0, 0) for p in parts]))
+    # first name's ink top at y = 0, the second name's capitals GAP below the first baseline
     top = min(p.bounds[1] for p in lines[0]["parts"])
-    bottom = max(p.bounds[3] for p in lines[-1]["parts"])
     lines[0]["baseline"] = -top
-    lines[-1]["baseline"] = HEIGHT - bottom
+    for prev, line in zip(lines, lines[1:]):
+        line["baseline"] = prev["baseline"] + GAP + cap
     for line in lines:
         line["parts"] = [translate(p, MARGIN, MARGIN + line["baseline"]) for p in line["parts"]]
-    return cap, lines
+    height = max(p.bounds[3] for p in lines[-1]["parts"]) - MARGIN
+    return cap, lines, height
 
 
 def main():
-    cap, lines = build()
-    w, h = WIDTH + 2 * MARGIN, HEIGHT + 2 * MARGIN
+    cap, lines, height = build()
+    w, h = WIDTH + 2 * MARGIN, height + 2 * MARGIN
     body = "".join(
         f'<path id="{line["text"].lower()}-{n}" fill="#000000" fill-rule="evenodd" d="{geom_path(p)}"/>\n'
         for line in lines for n, p in enumerate(line["parts"], 1))
