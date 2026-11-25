@@ -63,7 +63,7 @@ LETTER_SQUEEZE = {"N": 0.83}
 #               left stroke and its serifs are removed, so the join is one clean stroke
 # A name listed here keeps these joins; any other name gets one even gap that makes it as
 # wide as the widest joined name.
-NAME_JOINS = {"janny": [2, -11, "stem", -9]}
+NAME_JOINS = {"janny": [2, -11, 6, -9], "alex": [6, 6, 6]}
 NAME_SMOOTH = 0.9     # joined letters: notches narrower than twice this are filled in, mm
 
 
