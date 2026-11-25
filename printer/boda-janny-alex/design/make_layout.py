@@ -19,7 +19,7 @@ Everything is in mm. Change LINES to move or resize anything.
 from pathlib import Path
 
 from shapely.affinity import scale, translate
-from shapely.geometry import LineString, Point, Polygon, box
+from shapely.geometry import LineString, Polygon, box
 from shapely.ops import unary_union
 
 from textgeo import geom_path, layout, load_font, min_feature, polygons
@@ -149,40 +149,54 @@ def curved_bridge_a(part, cap):
     return unary_union([legs, bridge])
 
 
+def tick(x, y0, y1, wide, narrow):
+    """Upright wedge serif at x, from y0 to y1: `wide` where it meets the arm (y0), `narrow` at the tip."""
+    return Polygon([(x - wide / 2, y0), (x + wide / 2, y0), (x + narrow / 2, y1), (x - narrow / 2, y1)])
+
+
 def drawn_e(part, cap):
     """Hand-drawn E, after the E in the reference sign.
 
-    A slim upright with three hairline arms: long top and bottom arms, a short middle arm set
-    above the centre, and a small ball at the end of each arm. No slab serifs.
+    A slim upright with three hairline arms, each ending in a thin upright serif (not a ball):
+    the top arm's serif crosses the arm, sticking up past the cap line as much as it hangs down;
+    the short middle arm (set above the centre) ends in a serif through the arm; and the long
+    bottom arm's serif points up from the base line.
     """
     x0 = part.bounds[0]
-    stem = cap * 0.085                   # upright
+    stem = cap * 0.08                    # upright
     hair = cap * 0.021                   # arms
-    width = cap * 0.56                   # whole letter
-    ball = cap * 0.021                   # terminal radius
-    mid_y = -cap * 0.61                  # middle arm sits above the centre
-    mid_len = cap * 0.25
+    top_len, mid_len, bot_len = cap * 0.47, cap * 0.30, cap * 0.51   # from the left edge
+    mid_y = -cap * 0.62                  # middle arm sits above the centre
+    wide, narrow = cap * 0.024, cap * 0.018
+    tx, mx, bx = x0 + top_len - wide / 2, x0 + mid_len - wide / 2, x0 + bot_len - wide / 2
     shapes = [
         box(x0, -cap, x0 + stem, 0),
-        box(x0, -cap, x0 + width - ball, -cap + hair),                       # top arm
-        box(x0, -hair, x0 + width - ball, 0),                                 # bottom arm
-        box(x0 + stem, mid_y - hair / 2, x0 + stem + mid_len, mid_y + hair / 2),
-        Point(x0 + width - ball, -cap + ball).buffer(ball),                   # top ball hangs just under the arm line
-        Point(x0 + width - ball, -ball).buffer(ball),                         # bottom ball sits on the base line
-        Point(x0 + stem + mid_len, mid_y).buffer(ball * 0.9),
+        box(x0, -cap, tx + narrow / 2, -cap + hair),                                        # top arm
+        box(x0, -hair, bx + narrow / 2, 0),                                     # bottom arm
+        box(x0 + stem, mid_y - hair / 2, mx + narrow / 2, mid_y + hair / 2),                # middle arm
+        tick(tx, -cap + hair / 2, -cap + cap * 0.065, wide, narrow),           # top serif, down
+        tick(tx, -cap + hair / 2, -cap - cap * 0.055, wide, narrow),           # and as far up
+        tick(mx, mid_y, mid_y - cap * 0.05, wide, narrow),               # middle serif, up
+        tick(mx, mid_y, mid_y + cap * 0.05, wide, narrow),               # and down
+        tick(bx, -hair / 2, -cap * 0.085, wide, narrow),                       # bottom serif, up
     ]
-    return unary_union(shapes)
+    # soften the inside corners where serifs meet arms, like a bracketed serif
+    e = unary_union(shapes)
+    return e.buffer(-cap * 0.004, join_style=1).buffer(cap * 0.008, join_style=1).buffer(-cap * 0.004, join_style=1)
 
 
 def drawn_l(part, cap):
-    """Hand-drawn L in the same manner as the E: slim upright, hairline foot, small ball at its end."""
+    """Hand-drawn L in the same manner as the E: slim upright, hairline foot, upright wedge serif at its end."""
     x0 = part.bounds[0]
-    stem, hair, width, ball = cap * 0.085, cap * 0.021, cap * 0.50, cap * 0.021
-    return unary_union([
+    stem, hair, length = cap * 0.08, cap * 0.021, cap * 0.47
+    wide, narrow = cap * 0.024, cap * 0.018
+    bx = x0 + length - wide / 2
+    l = unary_union([
         box(x0, -cap, x0 + stem, 0),
-        box(x0, -hair, x0 + width - ball, 0),
-        Point(x0 + width - ball, -ball).buffer(ball),
+        box(x0, -hair, bx + narrow / 2, 0),
+        tick(bx, -hair / 2, -cap * 0.085, wide, narrow),
     ])
+    return l.buffer(-cap * 0.004, join_style=1).buffer(cap * 0.008, join_style=1).buffer(-cap * 0.004, join_style=1)
 
 
 # Hand-drawn replacements, by letter. Each takes the letter's outline and its cap height.
