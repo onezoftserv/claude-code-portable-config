@@ -65,6 +65,7 @@ LETTER_SQUEEZE = {"N": 0.83}
 # wide as the widest joined name.
 NAME_JOINS = {"janny": [2, -11, 6, -9], "alex": [6, 6, 6]}
 NAME_SMOOTH = 0.9     # joined letters: notches narrower than twice this are filled in, mm
+NAME_BOLD = 1.0       # every name letter is thickened by this many mm per side, then scaled back to its cap height
 
 
 def strokes(part, cap):
@@ -217,6 +218,11 @@ def spaced_names():
             letters = sorted(layout(font, text, **size).parts, key=lambda g: g.bounds[0])
             letters = [REDRAWN[ch](part, caps[key]) if ch in REDRAWN else part for ch, part in zip(text, letters)]
             raw[key] = [scale(part, k * LETTER_SQUEEZE.get(ch, 1), 1, origin=(0, 0)) for ch, part in zip(text, letters)]
+            if NAME_BOLD:
+                shrink = caps[key] / (caps[key] + 2 * NAME_BOLD)
+                fat = [part.buffer(NAME_BOLD, join_style=2, mitre_limit=3) for part in raw[key]]
+                raw[key] = [translate(scale(part, shrink, shrink, origin=(part.centroid.x, 0)), 0, -NAME_BOLD * shrink)
+                            for part in fat]
     out = {key: (respace(raw[key], joins, caps[key]), joins) for key, joins in NAME_JOINS.items()}
     target = max(width_of(parts) for parts, _ in out.values())
     for key, parts in raw.items():
